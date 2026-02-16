@@ -1,0 +1,12 @@
+[Aa]bin/
+[Oo]bj/
+.vs/
+.vscode/
+*.user
+*.suo
+*.sln.docstates
+appsettings.Development.json
+out/
+dist/
+node_modules/
+.env

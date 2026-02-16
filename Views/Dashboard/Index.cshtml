@@ -1,0 +1,1121 @@
+@{
+    ViewData["Title"] = "Production Quality Dashboard";
+    Layout = null; // Fullscreen mode for TV
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Quality Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0b1121;
+            --card-bg: #151e32;
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --border-color: rgba(255,255,255,0.05);
+            /* Accents */
+            --accent-blue: #3b82f6; 
+            --accent-cyan: #06b6d4;
+            --accent-yellow: #f59e0b;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            
+            /* Gradient Colors */
+            --grad-blue-start: #1e3a8a; --grad-blue-end: #3b82f6;
+            --grad-red-start: #7f1d1d; --grad-red-end: #ef4444;
+            --grad-cyan-start: #155e75; --grad-cyan-end: #06b6d4;
+            --grad-gray-start: #1f2937; --grad-gray-end: #4b5563;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            overflow-x: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+        }
+
+        /* TV Optimization: Scale up on large screens */
+        @@media (min-width: 1920px) {
+            body { font-size: 1rem; }
+        }
+
+        .dashboard-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* --- KPI Cards - Enhanced Deep Dark Gradient --- */
+        .kpi-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            height: 11vh;
+            min-height: 100px;
+            max-height: 120px;
+        }
+
+        .kpi-card {
+            border-radius: 12px;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px -5px rgba(0,0,0,0.5);
+        }
+
+        /* Specific Deep Dark Gradients */
+        .kpi-card.gradient-blue {
+            background: linear-gradient(145deg, #0f172a 0%, #1e3a8a 150%);
+            border-left: 4px solid #3b82f6;
+            box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.1);
+        }
+        .kpi-card.gradient-red {
+            background: linear-gradient(145deg, #0f172a 0%, #7f1d1d 150%);
+            border-left: 4px solid #ef4444;
+            box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.1);
+        }
+        .kpi-card.gradient-cyan {
+            background: linear-gradient(145deg, #0f172a 0%, #155e75 150%);
+            border-left: 4px solid #06b6d4;
+            box-shadow: inset 0 0 20px rgba(6, 182, 212, 0.1);
+        }
+        .kpi-card.gradient-gray {
+            background: linear-gradient(145deg, #0f172a 0%, #334155 150%);
+            border-left: 4px solid #94a3b8;
+            box-shadow: inset 0 0 20px rgba(148, 163, 184, 0.1);
+        }
+
+        .kpi-content {
+            z-index: 2;
+        }
+
+        .kpi-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .kpi-value {
+            font-size: 2.2rem;
+            font-weight: 800;
+            line-height: 1;
+            color: #ffffff;
+            letter-spacing: -1px;
+        }
+        
+        .kpi-unit { 
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-left: 5px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0;
+        }
+
+        /* Icon Styling - Cleaner & More Integrated */
+        .kpi-icon {
+            font-size: 3.2rem;
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 1;
+            transition: all 0.4s ease;
+        }
+
+        .kpi-card:hover .kpi-icon {
+            transform: translateY(-50%) scale(1.1) rotate(-10deg);
+            opacity: 0.4;
+        }
+
+        .kpi-card.gradient-blue .kpi-icon { color: rgba(59, 130, 246, 0.25); }
+        .kpi-card.gradient-red .kpi-icon { color: rgba(239, 68, 68, 0.25); }
+        .kpi-card.gradient-cyan .kpi-icon { color: rgba(6, 182, 212, 0.25); }
+        .kpi-card.gradient-gray .kpi-icon { color: rgba(148, 163, 184, 0.2); }
+
+        /* --- Main Content Grid --- */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 35% 65%; /* Perlebar kolom kiri dari 28% ke 35% agar grafik tren lebih panjang */
+            gap: 10px;
+            flex-grow: 1;
+            height: calc(100vh - 12vh - 30px); /* Fill remaining space */
+        }
+
+        /* Left Column (Charts Stacked) */
+        .left-col {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            height: 100%;
+        }
+
+        .side-chart-card {
+            background-color: #151e32;
+            border-radius: 12px;
+            padding: 15px 15px 10px 40px; /* Lebar padding kiri untuk label vertikal */
+            flex: 1;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .side-chart-card.blue-accent { border-left: 4px solid #3b82f6; }
+        .side-chart-card.yellow-accent { border-left: 4px solid #f59e0b; }
+        .side-chart-card.green-accent { border-left: 4px solid #10b981; }
+
+        .chart-title-vertical {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            position: absolute;
+            left: 0px;
+            top: 0;
+            bottom: 0;
+            width: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.4); /* Biru gelap transparan */
+            color: #94a3b8;
+            font-weight: 800;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-right: 1px solid rgba(255,255,255,0.05);
+            pointer-events: none;
+        }
+
+        .side-card-label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #94a3b8;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+
+        .side-chart-area {
+            flex-grow: 1;
+            height: 100%;
+            width: 100%;
+        }
+
+        /* --- Legend Customization for Trends (Left Col Only) --- */
+        /* Force horizontal layout even if the screen is small */
+        .left-col .apexcharts-canvas .apexcharts-legend {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            align-items: center !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            white-space: nowrap !important;
+            overflow: visible !important;
+            background: transparent !important;
+        }
+
+        .left-col .apexcharts-legend-series {
+            display: inline-flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            margin: 0 10px !important; /* Spasi antar item */
+            flex-shrink: 0 !important;
+            width: auto !important;
+        }
+
+        /* Marker Styling */
+        .left-col .apexcharts-legend-marker {
+            margin-right: 5px !important;
+        }
+
+        /* Rule for Bars (Box) */
+        .left-col .apexcharts-legend-series:nth-child(1) .apexcharts-legend-marker,
+        .left-col .apexcharts-legend-series:nth-child(2) .apexcharts-legend-marker {
+            border-radius: 2px !important;
+            height: 10px !important;
+            width: 10px !important;
+        }
+
+        /* Rule for Lines (RR% & Target) */
+        .left-col .apexcharts-legend-series:nth-child(3) .apexcharts-legend-marker,
+        .left-col .apexcharts-legend-series:nth-child(4) .apexcharts-legend-marker {
+            height: 2px !important;
+            width: 20px !important;
+            border-radius: 0 !important;
+            margin-top: 1px !important;
+        }
+
+        /* Force color and style for Target (Red Dashed) */
+        .left-col .apexcharts-legend-marker[style*="rgb(239, 68, 68)"],
+        .left-col .apexcharts-legend-marker[style*="#ef4444"] {
+            background: linear-gradient(90deg, #ef4444 60%, transparent 40%) !important;
+            background-size: 6px 100% !important;
+            background-color: transparent !important;
+            height: 2px !important;
+            width: 20px !important;
+            border-radius: 0 !important;
+        }
+
+        /* Force color for RR% (Green Solid) */
+        .left-col .apexcharts-legend-marker[style*="rgb(16, 185, 129)"],
+        .left-col .apexcharts-legend-marker[style*="#10b981"] {
+            background-color: #10b981 !important;
+            height: 2px !important;
+            width: 20px !important;
+            border-radius: 0 !important;
+        }
+
+        /* --- Right Column & Filters --- */
+        .right-col {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100%;
+        }
+
+        .filter-panel {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(15px);
+            border-radius: 12px;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            margin-bottom: 5px;
+        }
+
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .filter-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .filter-item label {
+            font-size: 0.65rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-select-dark {
+            background-color: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #f8fafc;
+            font-size: 0.85rem;
+            padding: 6px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .form-select-dark:focus {
+            border-color: #3b82f6;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 10px;
+            flex: 5; /* Diperbesar dari 4 agar area chart Pareto & Donut lebih tinggi/dominan */
+        }
+
+        .main-chart-card {
+            background: #151e32;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .main-chart-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right:0; height: 3px;
+            border-radius: 12px 12px 0 0;
+            background: #3b82f6; /* Default accent */
+        }
+        
+        .main-chart-card:nth-child(2)::before { background: #06b6d4; }
+
+        .card-header-label {
+            text-align: center;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            margin-bottom: 15px;
+            letter-spacing: 1.5px;
+        }
+
+        .tables-row {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 10px;
+            flex: 4; /* Dikurangi dari 5 agar area tabel lebih ramping */
+        }
+
+        /* --- Tables Styling --- */
+        .table-card {
+            background: #151e32;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .table-header {
+            background: #1e293b;
+            padding: 12px 20px;
+            font-weight: 700;
+            font-size: 0.75rem;
+            color: #f1f5f9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .table-content {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        table.dark-table {
+            width: 100%;
+            font-size: 0.85rem;
+            color: #cbd5e1;
+            border-collapse: separate;
+            border-spacing: 0 4px;
+        }
+
+        table.dark-table th {
+            position: sticky;
+            top: 0;
+            background: #0f172a; 
+            padding: 8px 12px; /* Dikurangi dari 12px 15px */
+            text-align: left;
+            font-weight: 700;
+            color: #f8fafc;
+            text-transform: uppercase;
+            font-size: 0.65rem; /* Perkecil sedikit */
+            letter-spacing: 1px;
+            z-index: 10;
+            border-bottom: 2px solid rgba(59, 130, 246, 0.5);
+        }
+
+        table.dark-table tbody tr {
+            background-color: rgba(255, 255, 255, 0.02);
+            transition: all 0.2s ease;
+        }
+
+        table.dark-table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            transform: scale(1.002);
+        }
+
+        table.dark-table td {
+            padding: 6px 12px; /* Dikurangi dari 10px 15px supaya lebih ramping */
+            border: none;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        table.dark-table th {
+            border-right: 1px solid rgba(255, 255, 255, 0.05); /* Garis Vertikal Header */
+        }
+
+        table.dark-table td:last-child, table.dark-table th:last-child {
+            border-right: none;
+        }
+        
+        table.dark-table td:first-child { border-radius: 6px 0 0 6px; text-align: center; width: 50px; }
+        table.dark-table td:last-child { border-radius: 0 6px 6px 0; }
+        
+        .badge-rr { 
+            padding: 4px 8px; 
+            border-radius: 5px; 
+            font-weight: 700; 
+            font-size: 0.75rem; 
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+        }
+        .bg-red-soft { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+        .bg-green-soft { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .bg-yellow-soft { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+
+        /* Pagination Styling */
+        .pagination-footer {
+            padding: 8px 20px;
+            background: rgba(15, 23, 42, 0.4);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .pagination-info {
+            font-size: 0.7rem;
+            color: #64748b;
+        }
+
+        .pagination-btns {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-page {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #cbd5e1;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .btn-page:hover:not(:disabled) {
+            background: #3b82f6;
+            color: white;
+            border-color: #60a5fa;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-page:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .btn-page:disabled {
+            opacity: 0.2;
+            cursor: default;
+            pointer-events: none;
+        }
+
+        /* Fixed height for table scrolling */
+        .table-card .table-content {
+            height: 300px; /* Constrain height to trigger scroll */
+            overflow-y: auto;
+        }
+
+        /* Loader */
+        #loader {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(11, 17, 33, 0.8);
+            display: flex; justify-content: center; align-items: center; z-index: 9999;
+        }
+        .spinner-border { color: var(--accent-blue); }
+    </style>
+</head>
+<body>
+
+<div id="loader"><div class="spinner-border" role="status"></div></div>
+
+<div class="dashboard-container">
+    <!-- Top KPI Row -->
+    <div class="kpi-row">
+        <div class="kpi-card gradient-blue">
+            <div class="kpi-content">
+                <div class="kpi-label">QTY CHECK (OK)</div>
+                <div class="kpi-value"><span id="kpiCheck">0</span><span class="kpi-unit">pcs</span></div>
+            </div>
+            <i class="fas fa-check-circle kpi-icon"></i>
+        </div>
+        <div class="kpi-card gradient-red">
+            <div class="kpi-content">
+                <div class="kpi-label">QTY NG</div>
+                <div class="kpi-value"><span id="kpiNg">0</span><span class="kpi-unit">pcs</span></div>
+            </div>
+            <i class="fas fa-exclamation-triangle kpi-icon"></i>
+        </div>
+        <div class="kpi-card gradient-cyan">
+            <div class="kpi-content">
+                <div class="kpi-label">RR %</div>
+                <div class="kpi-value"><span id="kpiRr">0</span><span class="kpi-unit">%</span></div>
+            </div>
+            <i class="fas fa-chart-line kpi-icon"></i>
+        </div>
+        <div class="kpi-card gradient-gray">
+            <div class="kpi-content">
+                <div class="kpi-label">TOTAL DATA</div>
+                <div class="kpi-value"><span id="kpiTotal">0</span><span class="kpi-unit">records</span></div>
+            </div>
+            <i class="fas fa-database kpi-icon"></i>
+        </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="content-grid">
+        <!-- Left: Trends -->
+        <div class="left-col">
+            <div class="side-chart-card blue-accent">
+                <div class="chart-title-vertical">BULANAN</div>
+                <div class="side-chart-area" id="chartMonthly"></div>
+            </div>
+            <div class="side-chart-card yellow-accent">
+                <div class="chart-title-vertical">MINGGUAN</div>
+                <div class="side-chart-area" id="chartWeekly"></div>
+            </div>
+            <div class="side-chart-card green-accent">
+                <div class="chart-title-vertical">HARIAN</div>
+                <div class="side-chart-area" id="chartDaily"></div>
+            </div>
+        </div>
+
+        <!-- Right: Analysis -->
+        <div class="right-col">
+            <!-- Filter Section -->
+            <div class="filter-panel">
+                <div class="filter-header">
+                    <div style="display: flex; align-items:center; gap: 10px;">
+                        <i class="fas fa-filter" style="color: #3b82f6; font-size: 0.8rem;"></i>
+                        <span style="font-size: 0.75rem; font-weight: 800; color: #f8fafc; letter-spacing: 1px;">DASHBOARD FILTERS</span>
+                        <select id="filterPlant" class="form-select-dark" style="margin-left: 10px; height: 28px; padding: 0 10px; font-size: 0.7rem; font-weight: 700;" onchange="onPlantChange()">
+                            <option value="1" selected>PLANT HOSE</option>
+                            <option value="2">PLANT MOLDED</option>
+                            <option value="3">PLANT RVI</option>
+                            <option value="4">PLANT BTR</option>
+                        </select>
+                    </div>
+                    <div style="text-align:right; color: #64748b; font-size: 0.7rem; font-weight: 600;">
+                        <i class="fas fa-clock" style="margin-right: 4px;"></i> Last Update: <span id="lastUpdate">-</span>
+                    </div>
+                </div>
+                
+                <div class="filter-grid">
+                    <div class="filter-item">
+                        <label>BULAN</label>
+                        <select id="filterMonth" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA BULAN --</option></select>
+                    </div>
+                    <div class="filter-item">
+                        <label>TANGGAL</label>
+                        <select id="filterDate" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA TANGGAL --</option></select>
+                    </div>
+                    <div class="filter-item">
+                        <label>JENIS NG</label>
+                        <select id="filterJenisNg" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA JENIS --</option></select>
+                    </div>
+                    <div class="filter-item">
+                        <label>KATEGORI NG</label>
+                        <select id="filterKategoriNg" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA KATEGORI --</option></select>
+                    </div>
+                    <div class="filter-item">
+                        <label>LINE</label>
+                        <select id="filterLine" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA LINE --</option></select>
+                    </div>
+                    <div class="filter-item">
+                        <label>PART CODE</label>
+                        <select id="filterPartCode" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA PART --</option></select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-row">
+                <div class="main-chart-card">
+                    <div class="card-header-label">PARETO PART (TOP 10 NG)</div>
+                    <div id="chartPareto" style="flex-grow:1;"></div>
+                </div>
+                <div class="main-chart-card">
+                    <div class="card-header-label">KRITERIA NG BREAKDOWN</div>
+                    <div id="chartDonut" style="flex-grow:1;"></div>
+                </div>
+            </div>
+
+            <!-- Tables Row -->
+            <div class="tables-row">
+                <div class="table-card">
+                    <div class="table-header">DATA REJECTION / PART DETAIL</div>
+                    <div class="table-content">
+                        <table class="dark-table" id="tablePart">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">No</th>
+                                    <th>Kode Item</th>
+                                    <th>Qty Check</th>
+                                    <th>Qty NG</th>
+                                    <th>RR%</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-footer">
+                        <div class="pagination-info" id="infoPart">Page 1 of 1</div>
+                        <div class="pagination-btns">
+                            <button class="btn-page" onclick="changePage('part', -1)" id="prevPart">Prev</button>
+                            <button class="btn-page" onclick="changePage('part', 1)" id="nextPart">Next</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <div class="table-header">DATA REJECTION / KRITERIA NG</div>
+                    <div class="table-content">
+                        <table class="dark-table" id="tableNg">
+                            <thead>
+                                <tr>
+                                    <th style="text-align: center;">No</th>
+                                    <th>Kriteria NG</th>
+                                    <th>Total Qty</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-footer">
+                        <div class="pagination-info" id="infoNg">Page 1 of 1</div>
+                        <div class="pagination-btns">
+                            <button class="btn-page" onclick="changePage('ng', -1)" id="prevNg">Prev</button>
+                            <button class="btn-page" onclick="changePage('ng', 1)" id="nextNg">Next</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        onPlantChange(); // Initialize filter options and data
+        
+        // Auto refresh every 5 minutes for TV display
+        setInterval(loadData, 300000); 
+    });
+
+    function onPlantChange() {
+        const plantId = document.getElementById('filterPlant').value;
+        loadFilterOptions(plantId);
+        loadData();
+    }
+
+    function loadFilterOptions(plantId) {
+        fetch(`/Dashboard/GetFilterOptions?plantId=${plantId}`)
+            .then(res => res.json())
+            .then(res => {
+                if (res.success) {
+                    const d = res.data;
+                    populateDropdown('filterMonth', d.months, '-- SEMUA BULAN --');
+                    populateDropdown('filterDate', d.dates, '-- SEMUA TANGGAL --');
+                    populateDropdown('filterJenisNg', d.jenisNg, '-- SEMUA JENIS --');
+                    populateDropdown('filterKategoriNg', d.kategoriNg, '-- SEMUA KATEGORI --');
+                    populateDropdown('filterLine', d.lines, '-- SEMUA LINE --');
+                    populateDropdown('filterPartCode', d.partCodes, '-- SEMUA PART --');
+                }
+            });
+    }
+
+    function populateDropdown(id, list, defaultText) {
+        const sel = document.getElementById(id);
+        const currentVal = sel.value;
+        sel.innerHTML = `<option value="">${defaultText}</option>`;
+        list.forEach(item => {
+            const opt = document.createElement('option');
+            opt.value = item;
+            opt.textContent = item;
+            if (item === currentVal) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function loadData() {
+        document.getElementById('loader').style.display = 'flex';
+        
+        const plantId = document.getElementById('filterPlant').value;
+        const month = document.getElementById('filterMonth').value;
+        const date = document.getElementById('filterDate').value;
+        const jenisNg = document.getElementById('filterJenisNg').value;
+        const kategoriNg = document.getElementById('filterKategoriNg').value;
+        const line = document.getElementById('filterLine').value;
+        const partCode = document.getElementById('filterPartCode').value;
+
+        // Calculate dates based on month or selected date
+        let startDate = '', endDate = '';
+        if (date) {
+            startDate = date;
+            endDate = date;
+        } else if (month) {
+            const [y, m] = month.split('-');
+            startDate = `${y}-${m}-01`;
+            const last = new Date(y, m, 0).getDate();
+            endDate = `${y}-${m}-${last}`;
+        } else {
+            // Default: current month
+            const now = new Date();
+            const y = now.getFullYear();
+            const m = String(now.getMonth() + 1).padStart(2, '0');
+            startDate = `${y}-${m}-01`;
+            endDate = new Date(y, now.getMonth() + 1, 0).toISOString().split('T')[0];
+        }
+
+        const url = `/Dashboard/GetData?plantId=${plantId}&startDate=${startDate}&endDate=${endDate}&line=${encodeURIComponent(line)}&jenisNg=${encodeURIComponent(jenisNg)}&kategoriNg=${encodeURIComponent(kategoriNg)}&partCode=${encodeURIComponent(partCode)}`;
+
+        fetch(url)
+            .then(response => response.json())
+            .then(res => {
+                document.getElementById('loader').style.display = 'none';
+                if (res.success) {
+                    const d = res.data;
+                    updateKPI(d.dataKpi);
+                    renderLeftCharts(d);
+                    renderMainCharts(d);
+                    renderTables(d);
+                    document.getElementById('lastUpdate').innerText = new Date().toLocaleTimeString();
+                } else {
+                    console.error('Server error:', res.message);
+                }
+            })
+            .catch(err => {
+                console.error('Fetch error:', err);
+                document.getElementById('loader').style.display = 'none';
+            });
+    }
+
+    function updateKPI(kpi) {
+        animateValue("kpiCheck", kpi.totalCheck);
+        animateValue("kpiNg", kpi.totalNg);
+        // animateValue("kpiRr", kpi.rrPercentage.toFixed(2)); // Float needs diff handling
+        document.getElementById('kpiRr').innerText = kpi.rrPercentage.toFixed(2);
+        animateValue("kpiTotal", kpi.totalData);
+        
+        // Dynamic coloring for RR
+        const rrElem = document.getElementById('kpiRr').parentElement;
+        rrElem.className = kpi.rrPercentage > 2.0 ? "kpi-value text-danger" : "kpi-value text-warning";
+    }
+
+    // --- Chart Configurations ---
+    const commonOpts = {
+        chart: { 
+            background: 'transparent', 
+            toolbar: { show: false }, 
+            foreColor: '#94a3b8', 
+            fontFamily: 'Inter, sans-serif' 
+        },
+        theme: { mode: 'dark' },
+        grid: { 
+            borderColor: 'rgba(255,255,255,0.08)', 
+            strokeDashArray: 2,
+            padding: { top: 10, right: 10, bottom: 0, left: 10 } 
+        },
+        dataLabels: { enabled: false },
+        tooltip: { theme: 'dark' }
+    };
+
+    function renderLeftCharts(d) {
+        const getMixedOptions = (data) => {
+            return {
+                series: [
+                    { name: 'QTY CHECK', type: 'column', data: data.map(x => x.qtyCheck || 0) },
+                    { name: 'QTY NG', type: 'column', data: data.map(x => x.qtyNg || 0) },
+                    { name: 'RR%', type: 'line', data: data.map(x => x.rrPercentage || 0) },
+                    { name: 'Target', type: 'line', data: data.map(x => 2.0) }
+                ],
+                chart: { 
+                    height: '100%', 
+                    type: 'bar', 
+                    stacked: true, 
+                    toolbar: { show: false },
+                    sparkline: { enabled: false },
+                    background: 'transparent',
+                    foreColor: '#94a3b8',
+                    fontFamily: 'Inter, sans-serif'
+                },
+                stroke: { 
+                    width: [0, 0, 3, 2], 
+                    dashArray: [0, 0, 0, 8], 
+                    curve: 'smooth' 
+                },
+                colors: ['#3b82f6', '#f59e0b', '#10b981', '#ef4444'],
+                plotOptions: { 
+                    bar: { 
+                        columnWidth: '40%', 
+                        borderRadius: 2
+                    } 
+                },
+                fill: { opacity: [0.85, 0.85, 1, 1] },
+                markers: { size: [0, 0, 4, 0] },
+                xaxis: { 
+                    categories: data.map(x => x.period),
+                    labels: { style: { fontSize: '8px' } },
+                    axisBorder: { show: false },
+                    axisTicks: { show: false }
+                },
+                yaxis: [
+                    { 
+                        seriesName: 'QTY CHECK',
+                        title: { text: undefined },
+                        labels: { 
+                            style: { fontSize: '8px' },
+                            formatter: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v.toFixed(0)
+                        }
+                    },
+                    { 
+                        seriesName: 'QTY CHECK',
+                        show: false 
+                    },
+                    { 
+                        seriesName: 'RR%',
+                        opposite: true, 
+                        min: 0, max: 10,
+                        labels: { 
+                            style: { fontSize: '8px', colors: '#10b981' },
+                            formatter: (v) => v.toFixed(1) + '%' 
+                        }
+                    },
+                    { 
+                        seriesName: 'RR%',
+                        show: false,
+                        opposite: true
+                    }
+                ],
+                legend: { 
+                    show: true,
+                    position: 'top', 
+                    horizontalAlign: 'center', 
+                    fontSize: '9px',
+                    fontFamily: 'Inter, sans-serif',
+                    fontWeight: 600,
+                    width: undefined, // Let CSS handle the width
+                    labels: { colors: '#94a3b8' },
+                    itemMargin: { horizontal: 10, vertical: 0 }
+                },
+                grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 2 },
+                tooltip: { 
+                    shared: true, 
+                    intersect: false,
+                    theme: 'dark',
+                    y: {
+                        formatter: function(val, { seriesIndex }) {
+                            if (seriesIndex <= 1) return val.toLocaleString() + " pcs";
+                            return val.toFixed(2) + "%";
+                        }
+                    }
+                }
+            };
+        };
+
+        createChart("#chartMonthly", getMixedOptions(d.chartMonthly));
+        createChart("#chartWeekly", getMixedOptions(d.chartWeekly));
+        createChart("#chartDaily", getMixedOptions(d.chartDaily));
+    }
+
+    function renderMainCharts(d) {
+        // Pareto
+        createChart("#chartPareto", {
+            series: [{ name: 'Total NG', data: d.chartParetoPart.map(x => x.totalNg) }],
+            chart: { 
+                type: 'bar', 
+                height: '100%', 
+                background: 'transparent',
+                toolbar: { show: false }
+            },
+            xaxis: { 
+                categories: d.chartParetoPart.map(x => x.kodeItem), 
+                labels: { rotate: -45, style: { fontSize: '10px' } },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            plotOptions: { 
+                bar: { 
+                    borderRadius: 4, 
+                    columnWidth: '50%',
+                    distributed: false,
+                    dataLabels: { position: 'top' }
+                } 
+            },
+            colors: ['#3b82f6'],
+            dataLabels: { 
+                enabled: true, 
+                style: { fontSize: '10px', fontWeight: 600 }, 
+                offsetY: -20,
+                formatter: (val) => val.toLocaleString()
+            },
+            grid: { borderColor: 'rgba(255,255,255,0.05)', strokeDashArray: 2 },
+            tooltip: { theme: 'dark' }
+        });
+
+        // Donut
+        createChart("#chartDonut", {
+            series: d.chartNgCriteria.map(x => x.totalNg),
+            labels: d.chartNgCriteria.map(x => x.kriteriaNg),
+            chart: { 
+                type: 'donut', 
+                height: '100%', 
+                background: 'transparent' 
+            },
+            legend: { 
+                position: 'right', 
+                fontSize: '11px', 
+                width: 140,
+                labels: { colors: '#94a3b8' },
+                markers: { radius: 2 }
+            },
+            plotOptions: { 
+                pie: { 
+                    donut: { 
+                        size: '70%', 
+                        labels: { 
+                            show: true, 
+                            total: { 
+                                show: true, 
+                                label: 'TOTAL NG', 
+                                fontSize: '11px', 
+                                color: '#94a3b8',
+                                fontWeight: 600,
+                                formatter: () => d.chartNgCriteria.reduce((a, b) => a + b.totalNg, 0).toLocaleString()
+                            },
+                            value: { fontSize: '18px', fontWeight: 700, color: '#fff' }
+                        } 
+                    } 
+                } 
+            },
+            stroke: { show: true, width: 2, colors: ['#151e32'] },
+            dataLabels: { enabled: false }
+        });
+    }
+
+    let currentData = null;
+    let pagePart = 1;
+    let pageNg = 1;
+    const pageSize = 50;
+
+    function renderTables(d) {
+        currentData = d;
+        renderPartTable();
+        renderNgTable();
+    }
+
+    function renderPartTable() {
+        const data = currentData.tablePartRejection;
+        const totalPages = Math.ceil(data.length / pageSize) || 1;
+        if (pagePart > totalPages) pagePart = totalPages;
+        
+        const start = (pagePart - 1) * pageSize;
+        const pagedItems = data.slice(start, start + pageSize);
+        
+        const tbPart = document.querySelector("#tablePart tbody");
+        tbPart.innerHTML = pagedItems.map((r, i) => `
+            <tr>
+                <td style="text-align:center; color:#94a3b8;">${start + i + 1}</td>
+                <td><span style="color:#fff; font-weight:600;">${r.kodeItem}</span></td>
+                <td>${r.qtyCheck.toLocaleString()}</td>
+                <td class="text-danger">${r.qtyNg.toLocaleString()}</td>
+                <td><span class="badge-rr ${r.rrPercentage > 1 ? 'bg-red-soft' : 'bg-green-soft'}">${r.rrPercentage.toFixed(2)}%</span></td>
+            </tr>
+        `).join('');
+
+        document.getElementById('infoPart').innerText = `Page ${pagePart} of ${totalPages}`;
+        document.getElementById('prevPart').disabled = pagePart === 1;
+        document.getElementById('nextPart').disabled = pagePart === totalPages;
+        
+        // Auto-scroll to top on page change
+        document.querySelector("#tablePart").parentElement.scrollTop = 0;
+    }
+
+    function renderNgTable() {
+        // Reuse donut data if tableNgRejection is empty
+        const data = currentData.chartNgCriteria; 
+        const totalPages = Math.ceil(data.length / pageSize) || 1;
+        if (pageNg > totalPages) pageNg = totalPages;
+
+        const start = (pageNg - 1) * pageSize;
+        const pagedItems = data.slice(start, start + pageSize);
+
+        const tbNg = document.querySelector("#tableNg tbody");
+        tbNg.innerHTML = pagedItems.map((r, i) => `
+            <tr>
+                <td style="text-align:center; color:#94a3b8;">${start + i + 1}</td>
+                <td>${r.kriteriaNg}</td>
+                <td class="text-danger" style="font-weight:bold;">${r.totalNg.toLocaleString()}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('infoNg').innerText = `Page ${pageNg} of ${totalPages}`;
+        document.getElementById('prevNg').disabled = pageNg === 1;
+        document.getElementById('nextNg').disabled = pageNg === totalPages;
+        
+        document.querySelector("#tableNg").parentElement.scrollTop = 0;
+    }
+
+    function changePage(type, direction) {
+        if (type === 'part') {
+            pagePart += direction;
+            renderPartTable();
+        } else {
+            pageNg += direction;
+            renderNgTable();
+        }
+    }
+
+    // Helper to destroy old chart instance if exists
+    let charts = {};
+    function createChart(selector, options) {
+        if (charts[selector]) charts[selector].destroy();
+        charts[selector] = new ApexCharts(document.querySelector(selector), { ...commonOpts, ...options });
+        charts[selector].render();
+    }
+
+    function animateValue(id, end) {
+        const obj = document.getElementById(id);
+        if(!obj) return;
+        obj.innerText = end.toLocaleString(); 
+    }
+</script>
+
+</body>
+</html>
