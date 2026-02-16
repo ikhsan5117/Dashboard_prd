@@ -230,7 +230,6 @@
         }
 
         /* --- Legend Customization for Trends (Left Col Only) --- */
-        /* Force horizontal layout even if the screen is small */
         .left-col .apexcharts-canvas .apexcharts-legend {
             display: flex !important;
             flex-direction: row !important;
@@ -238,20 +237,26 @@
             justify-content: center !important;
             align-items: center !important;
             width: 100% !important;
+            max-width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
             white-space: nowrap !important;
             overflow: visible !important;
-            background: transparent !important;
+            top: 5px !important;
         }
 
         .left-col .apexcharts-legend-series {
-            display: inline-flex !important;
-            flex-direction: row !important;
+            display: flex !important;
             align-items: center !important;
-            margin: 0 10px !important; /* Spasi antar item */
+            margin: 0 4px !important;
             flex-shrink: 0 !important;
             width: auto !important;
+        }
+
+        .left-col .apexcharts-legend-text {
+            font-size: 8px !important;
+            padding-left: 3px !important;
+            white-space: nowrap !important;
         }
 
         /* Marker Styling */
@@ -943,13 +948,12 @@
                     show: true,
                     position: 'top', 
                     horizontalAlign: 'center', 
-                    fontSize: '9px',
+                    fontSize: '8px',
                     fontFamily: 'Inter, sans-serif',
                     fontWeight: 600,
                     offsetY: 0,
-                    margin: 10,
                     labels: { colors: '#94a3b8' },
-                    itemMargin: { horizontal: 5, vertical: 0 }
+                    itemMargin: { horizontal: 2, vertical: 0 }
                 },
                 grid: { 
                     borderColor: 'rgba(255,255,255,0.2)', 
