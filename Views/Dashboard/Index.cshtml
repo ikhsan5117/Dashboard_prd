@@ -177,15 +177,12 @@
         .side-chart-card {
             background-color: #151e32;
             border-radius: 12px;
-            padding: 15px 15px 10px 40px; /* Lebar padding kiri untuk label vertikal */
-            flex: 1;
+            padding: 5px 5px 5px 35px; /* Kurangi padding agar area chart lebih luas */
+            height: calc(33.33% - 7px); /* FIX: Gunakan tinggi fix (33%) agar tidak memuai saat resize */
             border: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
-            display: flex;
-            flex-direction: column;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             overflow: hidden;
-            min-height: 0;
         }
 
         .side-chart-card.blue-accent { border-left: 4px solid #3b82f6; }
@@ -224,25 +221,26 @@
         }
 
         .side-chart-area {
-            flex-grow: 1;
-            height: 100%;
-            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 35px; /* Sesuai lebar label vertikal */
+            right: 0;
+            bottom: 0;
+            width: auto;
+            height: auto;
         }
 
         /* --- Legend Customization for Trends (Left Col Only) --- */
         .left-col .apexcharts-canvas .apexcharts-legend {
-            display: flex !important;
-            flex-direction: row !important;
-            flex-wrap: nowrap !important;
+            display: grid !important;
+            grid-template-columns: repeat(4, auto) !important; /* FIX: Paksa 4 kolom horizontal */
+            gap: 8px !important;
             justify-content: center !important;
             align-items: center !important;
             width: 100% !important;
-            max-width: 100% !important;
             padding: 0 !important;
             margin: 0 !important;
-            white-space: nowrap !important;
-            overflow: visible !important;
-            top: 5px !important;
+            top: 2px !important;
             left: 0 !important;
             right: 0 !important;
             background: transparent !important;
@@ -951,13 +949,12 @@
                     show: true,
                     position: 'top', 
                     horizontalAlign: 'center', 
-                    fontSize: '8px',
+                    fontSize: '7.5px',
                     fontFamily: 'Inter, sans-serif',
-                    fontWeight: 600,
-                    offsetY: 0,
-                    width: 800, // Trick ApexCharts to allow more horizontal space
+                    fontWeight: 700,
+                    offsetY: -5,
                     labels: { colors: '#94a3b8' },
-                    itemMargin: { horizontal: 4, vertical: 0 }
+                    itemMargin: { horizontal: 2, vertical: 0 }
                 },
                 grid: { 
                     borderColor: 'rgba(255,255,255,0.2)', 
