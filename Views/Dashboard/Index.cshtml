@@ -177,12 +177,13 @@
         .side-chart-card {
             background-color: #151e32;
             border-radius: 12px;
-            padding: 5px 5px 5px 35px; /* Kurangi padding agar area chart lebih luas */
-            height: calc(33.33% - 7px); /* FIX: Gunakan tinggi fix (33%) agar tidak memuai saat resize */
+            padding: 5px 5px 5px 35px;
+            height: 280px; /* FIX: Gunakan tinggi fix (PX) agar tidak memuai saat resize */
             border: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             overflow: hidden;
+            margin-bottom: 5px;
         }
 
         .side-chart-card.blue-accent { border-left: 4px solid #3b82f6; }
@@ -228,6 +229,11 @@
             bottom: 5px;
             width: auto;
             height: auto;
+        }
+
+        /* --- Force Hide ApexCharts Legend --- */
+        .left-col .apexcharts-legend {
+            display: none !important;
         }
 
         /* --- Custom Professional Legend --- */
@@ -846,6 +852,7 @@
             yaxis: { lines: { show: true } },
             padding: { top: 10, right: 10, bottom: 0, left: 10 } 
         },
+        legend: { show: false }, /* Matikan total legend bawaan secara global */
         dataLabels: { enabled: false },
         tooltip: { theme: 'dark' }
     };
@@ -1046,6 +1053,7 @@
                 background: 'transparent' 
             },
             legend: { 
+                show: true,
                 position: 'right', 
                 fontSize: '11px', 
                 width: 140,
