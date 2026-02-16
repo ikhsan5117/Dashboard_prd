@@ -222,85 +222,50 @@
 
         .side-chart-area {
             position: absolute;
-            top: 0;
-            left: 35px; /* Sesuai lebar label vertikal */
-            right: 0;
-            bottom: 0;
+            top: 25px; /* Beri ruang untuk legend kustom di atas */
+            left: 35px;
+            right: 5px;
+            bottom: 5px;
             width: auto;
             height: auto;
         }
 
-        /* --- Legend Customization for Trends (Left Col Only) --- */
-        .left-col .apexcharts-canvas .apexcharts-legend {
-            display: grid !important;
-            grid-template-columns: repeat(4, auto) !important; /* FIX: Paksa 4 kolom horizontal */
-            gap: 8px !important;
-            justify-content: center !important;
-            align-items: center !important;
-            width: 100% !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            top: 2px !important;
-            left: 0 !important;
-            right: 0 !important;
-            background: transparent !important;
+        /* --- Custom Professional Legend --- */
+        .custom-chart-legend {
+            position: absolute;
+            top: 8px;
+            left: 45px;
+            right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            z-index: 20;
+            pointer-events: none;
         }
 
-        .left-col .apexcharts-legend-series {
-            display: flex !important;
-            align-items: center !important;
-            margin: 0 4px !important;
-            flex-shrink: 0 !important;
-            width: auto !important;
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 8px;
+            font-weight: 800;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .left-col .apexcharts-legend-text {
-            font-size: 8px !important;
-            padding-left: 3px !important;
-            white-space: nowrap !important;
+        .l-marker { border-radius: 2px; flex-shrink: 0; }
+        .l-marker.check { width: 10px; height: 10px; background: #3b82f6; }
+        .l-marker.ng { width: 10px; height: 10px; background: #f59e0b; }
+        .l-marker.rr { width: 16px; height: 2px; background: #10b981; border-radius: 0; }
+        .l-marker.target { 
+            width: 16px; 
+            height: 2px; 
+            background: repeating-linear-gradient(90deg, #ef4444, #ef4444 6px, transparent 6px, transparent 10px);
         }
 
-        /* Marker Styling */
-        .left-col .apexcharts-legend-marker {
-            margin-right: 5px !important;
-        }
-
-        /* Rule for Bars (Box) */
-        .left-col .apexcharts-legend-series:nth-child(1) .apexcharts-legend-marker,
-        .left-col .apexcharts-legend-series:nth-child(2) .apexcharts-legend-marker {
-            border-radius: 2px !important;
-            height: 10px !important;
-            width: 10px !important;
-        }
-
-        /* Rule for Lines (RR% & Target) */
-        .left-col .apexcharts-legend-series:nth-child(3) .apexcharts-legend-marker,
-        .left-col .apexcharts-legend-series:nth-child(4) .apexcharts-legend-marker {
-            height: 2px !important;
-            width: 20px !important;
-            border-radius: 0 !important;
-            margin-top: 1px !important;
-        }
-
-        /* Force color and style for Target (Red Dashed) */
-        .left-col .apexcharts-legend-marker[style*="rgb(239, 68, 68)"],
-        .left-col .apexcharts-legend-marker[style*="#ef4444"] {
-            background: linear-gradient(90deg, #ef4444 60%, transparent 40%) !important;
-            background-size: 6px 100% !important;
-            background-color: transparent !important;
-            height: 2px !important;
-            width: 20px !important;
-            border-radius: 0 !important;
-        }
-
-        /* Force color for RR% (Green Solid) */
-        .left-col .apexcharts-legend-marker[style*="rgb(16, 185, 129)"],
-        .left-col .apexcharts-legend-marker[style*="#10b981"] {
-            background-color: #10b981 !important;
-            height: 2px !important;
-            width: 20px !important;
-            border-radius: 0 !important;
-        }
+        /* Clear old legend styles */
 
         /* --- Right Column & Filters --- */
         .right-col {
@@ -613,14 +578,32 @@
         <div class="left-col">
             <div class="side-chart-card blue-accent">
                 <div class="chart-title-vertical">BULANAN</div>
+                <div class="custom-chart-legend">
+                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
+                    <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
+                    <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
+                </div>
                 <div class="side-chart-area" id="chartMonthly"></div>
             </div>
             <div class="side-chart-card yellow-accent">
                 <div class="chart-title-vertical">MINGGUAN</div>
+                <div class="custom-chart-legend">
+                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
+                    <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
+                    <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
+                </div>
                 <div class="side-chart-area" id="chartWeekly"></div>
             </div>
             <div class="side-chart-card green-accent">
                 <div class="chart-title-vertical">HARIAN</div>
+                <div class="custom-chart-legend">
+                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
+                    <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
+                    <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
+                </div>
                 <div class="side-chart-area" id="chartDaily"></div>
             </div>
         </div>
@@ -945,17 +928,7 @@
                         opposite: true
                     }
                 ],
-                legend: { 
-                    show: true,
-                    position: 'top', 
-                    horizontalAlign: 'center', 
-                    fontSize: '7.5px',
-                    fontFamily: 'Inter, sans-serif',
-                    fontWeight: 700,
-                    offsetY: -5,
-                    labels: { colors: '#94a3b8' },
-                    itemMargin: { horizontal: 2, vertical: 0 }
-                },
+                legend: { show: false },
                 grid: { 
                     borderColor: 'rgba(255,255,255,0.2)', 
                     strokeDashArray: 4,
