@@ -883,23 +883,47 @@
             const currentYear = new Date().getFullYear();
             
             // Calculate start and end date of the week
-            // Using ISO week date calculation
+            // Match SQL Server DATEPART(week, ...) calculation
+            // SQL Server uses Sunday as first day and FirstDay rule (week starts on Sunday)
+            // Week 1 is the week containing Jan 1, starting from the first Sunday on or before Jan 1
+            
             const jan1 = new Date(currentYear, 0, 1);
-            const daysToFirstMonday = (8 - jan1.getDay()) % 7;
-            const firstMonday = new Date(currentYear, 0, 1 + daysToFirstMonday);
+            const jan1Day = jan1.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+            
+            // Find the start of Week 1 (first Sunday on or before Jan 1)
+            let week1Start;
+            if (jan1Day === 0) {
+                // Jan 1 is Sunday, Week 1 starts on Jan 1
+                week1Start = new Date(jan1);
+            } else {
+                // Go back to previous Sunday
+                week1Start = new Date(jan1);
+                week1Start.setDate(jan1.getDate() - jan1Day);
+            }
             
             // Calculate the start of the selected week
-            const weekStart = new Date(firstMonday);
-            weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+            // Week 1 starts from week1Start, Week 2 starts 7 days later, etc.
+            const weekStart = new Date(week1Start);
+            weekStart.setDate(week1Start.getDate() + (weekNum - 1) * 7);
             
-            // Calculate the end of the selected week (6 days after start)
+            // Calculate the end of the selected week (6 days after start = Saturday)
             const weekEnd = new Date(weekStart);
             weekEnd.setDate(weekStart.getDate() + 6);
             
-            dr = {
-                startDate: weekStart.toISOString().split('T')[0],
-                endDate: weekEnd.toISOString().split('T')[0]
+            // Format dates as YYYY-MM-DD (local time, no timezone conversion)
+            const formatDate = (date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
             };
+            
+            dr = {
+                startDate: formatDate(weekStart),
+                endDate: formatDate(weekEnd)
+            };
+            
+            console.log(`[applyFilter] Weekly filter calculated: Week ${weekNum} = ${dr.startDate} to ${dr.endDate}`);
         } else if (type === 'daily') {
              dr = { startDate: value, endDate: value };
         } else if (type === 'part' || type === 'criteria') {
@@ -1159,12 +1183,34 @@
 
         const url = `/Dashboard/GetData?plantId=${plantId}&startDate=${startDate}&endDate=${endDate}&line=${encodeURIComponent(finalLine)}&jenisNg=${encodeURIComponent(finalJenisNg)}&kategoriNg=${encodeURIComponent(finalKategoriNg)}&partCode=${encodeURIComponent(finalPartCode)}`;
 
+        // Debug logging
+        if (filterState.type === 'weekly') {
+            console.log('[loadData] Weekly filter active:', {
+                type: filterState.type,
+                value: filterState.value,
+                dateRange: filterState.dateRange,
+                startDate: startDate,
+                endDate: endDate
+            });
+        }
+
         fetch(url)
             .then(response => response.json())
             .then(res => {
                 document.getElementById('loader').style.display = 'none';
                 if (res.success) {
                     const d = res.data;
+                    
+                    // Debug logging
+                    if (filterState.type === 'weekly') {
+                        console.log('[loadData] Data received:', {
+                            weeklyCount: d.chartWeekly?.length || 0,
+                            dailyCount: d.chartDaily?.length || 0,
+                            monthlyCount: d.chartMonthly?.length || 0,
+                            weeklyData: d.chartWeekly
+                        });
+                    }
+                    
                     updateKPI(d.dataKpi);
                     renderLeftCharts(d);
                     renderMainCharts(d);
@@ -1284,15 +1330,20 @@
                     toolbar: { show: false },
                     events: {
                         dataPointSelection: (event, chartContext, config) => {
+                            console.log(`[Chart ${chartType}] dataPointSelection:`, config);
                             if (config.dataPointIndex === -1) return;
                             const selected = data[config.dataPointIndex].periodValue || data[config.dataPointIndex].period;
+                            console.log(`[Chart ${chartType}] Selected:`, selected);
                             applyFilter(chartType, selected);
                         },
                         click: (event, chartContext, config) => {
+                            console.log(`[Chart ${chartType}] click:`, config.dataPointIndex);
                             if (config.dataPointIndex === -1) {
                                 const hoveredIndex = chartContext.w.globals.capturedDataPointIndex;
+                                console.log(`[Chart ${chartType}] Hovered Index:`, hoveredIndex);
                                 if (hoveredIndex !== undefined && hoveredIndex !== -1 && hoveredIndex < data.length) {
                                     const selected = data[hoveredIndex].periodValue || data[hoveredIndex].period;
+                                    console.log(`[Chart ${chartType}] Selected from hover:`, selected);
                                     applyFilter(chartType, selected);
                                 }
                             }
@@ -1358,8 +1409,10 @@
                 height: '100%',
                 events: {
                     dataPointSelection: (event, chartContext, config) => {
+                        console.log('[Pareto] dataPointSelection:', config);
                         if (config.dataPointIndex === -1) return;
                         const selected = d.chartParetoPart[config.dataPointIndex].kodeItem;
+                        console.log('[Pareto] Selected:', selected);
                         applyFilter('part', selected);
                     }
                 }
@@ -1399,8 +1452,10 @@
                 height: '100%',
                 events: {
                     dataPointSelection: (event, chartContext, config) => {
+                        console.log('[Donut] dataPointSelection:', config);
                         if (config.dataPointIndex === -1) return;
                         const selected = d.chartNgCriteria[config.dataPointIndex].kriteriaNg;
+                        console.log('[Donut] Selected:', selected);
                         applyFilter('criteria', selected);
                     }
                 }

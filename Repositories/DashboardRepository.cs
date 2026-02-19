@@ -205,11 +205,12 @@ namespace DashboardTest.Repositories
                 
                 // 5. Weekly Trend
                 // Drill-down logic:
-                // - If a specific week is selected (7 days): show only that week
+                // - If a specific week is selected (7 days): show only that week (no zero-filling)
                 // - If a month is selected (28-31 days): show weeks in that month
                 // - Otherwise: show all weeks in current year
                 DateTime weeklyStartDate;
                 DateTime weeklyEndDate;
+                bool isDrillDownWeek = false;
                 
                 int daysDiff = (int)(endDate - startDate).TotalDays;
                 
@@ -218,6 +219,7 @@ namespace DashboardTest.Repositories
                     // Drill-down to specific week: show only that week
                     weeklyStartDate = startDate;
                     weeklyEndDate = endDate;
+                    isDrillDownWeek = true; // Flag to skip zero-filling
                 }
                 else if (daysDiff >= 27 && daysDiff <= 31)
                 {
@@ -274,44 +276,73 @@ namespace DashboardTest.Repositories
                         }
                     }
 
-                    // Fill in gaps (Zero-Filling)
-                    // Get week number range from C# to match SQL
-                    var culture = System.Globalization.CultureInfo.CurrentCulture;
-                    var calendar = culture.Calendar;
-                    var rule = System.Globalization.CalendarWeekRule.FirstDay;
-                    var firstDayOfWeek = DayOfWeek.Sunday; // Match SQL default
-
-                    int startWeek = calendar.GetWeekOfYear(weeklyStartDate, rule, firstDayOfWeek);
-                    int endWeek = calendar.GetWeekOfYear(weeklyEndDate, rule, firstDayOfWeek);
-                    
-                    // Specific case: if range is within same year, fill smoothly
-                    // If crossing years, it's more complex, but here we usually view YTD or Monthly
-                    if (weeklyStartDate.Year == weeklyEndDate.Year) 
+                    // If drill-down to specific week, only show that week (no zero-filling)
+                    if (isDrillDownWeek)
                     {
-                        for (int w = startWeek; w <= endWeek; w++)
+                        // Just add the week data if it exists, otherwise add empty week
+                        var culture = System.Globalization.CultureInfo.CurrentCulture;
+                        var calendar = culture.Calendar;
+                        var rule = System.Globalization.CalendarWeekRule.FirstDay;
+                        var firstDayOfWeek = DayOfWeek.Sunday;
+                        
+                        int targetWeek = calendar.GetWeekOfYear(weeklyStartDate, rule, firstDayOfWeek);
+                        
+                        if (weeklyData.ContainsKey(targetWeek))
                         {
-                            if (weeklyData.ContainsKey(w))
+                            viewModel.ChartWeekly.Add(weeklyData[targetWeek]);
+                        }
+                        else
+                        {
+                            // Add empty week for the selected week
+                            viewModel.ChartWeekly.Add(new DashboardChartTrend
                             {
-                                viewModel.ChartWeekly.Add(weeklyData[w]);
-                            }
-                            else
-                            {
-                                // Add empty week
-                                viewModel.ChartWeekly.Add(new DashboardChartTrend
-                                {
-                                    Period = $"Week {w}",
-                                    PeriodValue = $"Week {w}",
-                                    QtyOk = 0,
-                                    QtyNg = 0,
-                                    RrPercentage = 0
-                                });
-                            }
+                                Period = $"Week {targetWeek}",
+                                PeriodValue = $"Week {targetWeek}",
+                                QtyOk = 0,
+                                QtyNg = 0,
+                                RrPercentage = 0
+                            });
                         }
                     }
                     else
                     {
-                        // Fallback if cross year, just show what we have
-                         foreach(var item in weeklyData.Values) viewModel.ChartWeekly.Add(item);
+                        // Fill in gaps (Zero-Filling) for overview mode
+                        var culture = System.Globalization.CultureInfo.CurrentCulture;
+                        var calendar = culture.Calendar;
+                        var rule = System.Globalization.CalendarWeekRule.FirstDay;
+                        var firstDayOfWeek = DayOfWeek.Sunday; // Match SQL default
+
+                        int startWeek = calendar.GetWeekOfYear(weeklyStartDate, rule, firstDayOfWeek);
+                        int endWeek = calendar.GetWeekOfYear(weeklyEndDate, rule, firstDayOfWeek);
+                        
+                        // Specific case: if range is within same year, fill smoothly
+                        if (weeklyStartDate.Year == weeklyEndDate.Year) 
+                        {
+                            for (int w = startWeek; w <= endWeek; w++)
+                            {
+                                if (weeklyData.ContainsKey(w))
+                                {
+                                    viewModel.ChartWeekly.Add(weeklyData[w]);
+                                }
+                                else
+                                {
+                                    // Add empty week
+                                    viewModel.ChartWeekly.Add(new DashboardChartTrend
+                                    {
+                                        Period = $"Week {w}",
+                                        PeriodValue = $"Week {w}",
+                                        QtyOk = 0,
+                                        QtyNg = 0,
+                                        RrPercentage = 0
+                                    });
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Fallback if cross year, just show what we have
+                            foreach(var item in weeklyData.Values) viewModel.ChartWeekly.Add(item);
+                        }
                     }
                 }
 
