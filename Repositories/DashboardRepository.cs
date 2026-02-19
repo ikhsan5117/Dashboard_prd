@@ -38,11 +38,15 @@ namespace DashboardTest.Repositories
                 await conn.OpenAsync();
 
                 // Build dynamic filter
-                string dynamicFilter = "";
-                if (!string.IsNullOrEmpty(line)) dynamicFilter += " AND CAST(AreaId AS VARCHAR) = @Line";
-                if (!string.IsNullOrEmpty(jenisNg)) dynamicFilter += " AND [Group] = @JenisNg";
-                if (!string.IsNullOrEmpty(kategoriNg)) dynamicFilter += " AND KeteranganNG = @KategoriNg";
-                if (!string.IsNullOrEmpty(partCode)) dynamicFilter += " AND KodeItem = @PartCode";
+                string dynamicFilterHeader = "";
+                if (!string.IsNullOrEmpty(line)) dynamicFilterHeader += " AND CAST(AreaId AS VARCHAR) = @Line";
+                if (!string.IsNullOrEmpty(jenisNg)) dynamicFilterHeader += " AND [Group] = @JenisNg";
+                if (!string.IsNullOrEmpty(kategoriNg)) dynamicFilterHeader += " AND KeteranganNG = @KategoriNg";
+                if (!string.IsNullOrEmpty(partCode)) dynamicFilterHeader += " AND KodeItem = @PartCode";
+
+                string dynamicFilterDetail = dynamicFilterHeader
+                    .Replace("[Group]", "JenisNg")
+                    .Replace("KeteranganNG", "AlasanNG");
 
                 void AddParameters(SqlCommand cmd)
                 {
@@ -55,14 +59,13 @@ namespace DashboardTest.Repositories
                     if (!string.IsNullOrEmpty(partCode)) cmd.Parameters.AddWithValue("@PartCode", partCode);
                 }
 
-                // 1. KPI Data
+                // 1. KPI Data - Using the corrected View for everything
                 string sqlKpi = $@"
                     SELECT 
-                        ISNULL(SUM(QtyOk), 0) as TotalCheck, 
-                        ISNULL(SUM(QtyNG), 0) as TotalNG,
-                        ISNULL(SUM(QtyOk + QtyNG), 0) as TotalData
-                    FROM produksi.tb_elwp_produksi_input_produksis
-                    WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilter}";
+                        (SELECT ISNULL(SUM(QtyOk), 0) FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterHeader}) as TotalCheck,
+                        ISNULL(SUM(QtyNgDetailed), 0) as TotalNG
+                    FROM produksi.vw_DashboardRejectionDetailed
+                    WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterDetail}";
 
                 using (var cmd = new SqlCommand(sqlKpi, conn))
                 {
@@ -71,9 +74,9 @@ namespace DashboardTest.Repositories
                     {
                         if (await reader.ReadAsync())
                         {
-                            viewModel.DataKpi.TotalCheck = Convert.ToInt64(reader[0]);
+                            viewModel.DataKpi.TotalOk = Convert.ToInt64(reader[0]);
                             viewModel.DataKpi.TotalNg = Convert.ToInt64(reader[1]);
-                            viewModel.DataKpi.TotalData = Convert.ToInt64(reader[2]);
+                            viewModel.DataKpi.TotalData = viewModel.DataKpi.TotalOk + viewModel.DataKpi.TotalNg;
                             
                             if (viewModel.DataKpi.TotalData > 0)
                                 viewModel.DataKpi.RrPercentage = (double)viewModel.DataKpi.TotalNg / viewModel.DataKpi.TotalData * 100.0;
@@ -82,36 +85,63 @@ namespace DashboardTest.Repositories
                 }
 
                 // 2. Monthly Trend
+                // If filtering by specific date range (from chart click), show only that period
+                // Otherwise show last 12 months for overview
+                DateTime monthlyStartDate;
+                DateTime monthlyEndDate;
+                
+                // Check if we're in drill-down mode (specific month/week/day selected)
+                bool isDrillDown = (endDate - startDate).TotalDays < 32; // Less than a month = drill-down
+                
+                if (isDrillDown)
+                {
+                    // Drill-down: Show only the selected month
+                    monthlyStartDate = new DateTime(startDate.Year, startDate.Month, 1);
+                    monthlyEndDate = new DateTime(startDate.Year, startDate.Month, DateTime.DaysInMonth(startDate.Year, startDate.Month));
+                }
+                else
+                {
+                    // Overview: Show last 12 months
+                    monthlyStartDate = startDate.AddMonths(-11);
+                    monthlyEndDate = endDate;
+                }
+                
                 string sqlMonthly = $@"
                     SELECT 
                         FORMAT(TanggalProduksi, 'MMM-yyyy') as Period,
                         YEAR(TanggalProduksi) as YearNum,
                         MONTH(TanggalProduksi) as MonthNum,
                         ISNULL(SUM(QtyOk), 0) as QtyCheck,
-                        ISNULL(SUM(QtyNG), 0) as QtyNg,
-                        ISNULL(SUM(QtyOk + QtyNG), 0) as TotalData
+                        ISNULL(SUM(QtyNG), 0) as QtyNg
                     FROM produksi.tb_elwp_produksi_input_produksis
                     WHERE PlantId = @PlantId 
-                      AND TanggalProduksi >= DATEADD(year, -1, GETDATE())
-                      {dynamicFilter}
+                      AND TanggalProduksi >= @MonthlyStartDate
+                      AND TanggalProduksi <= @MonthlyEndDate
+                      {dynamicFilterHeader}
                     GROUP BY YEAR(TanggalProduksi), MONTH(TanggalProduksi), FORMAT(TanggalProduksi, 'MMM-yyyy')
                     ORDER BY YearNum, MonthNum";
 
                 using (var cmd = new SqlCommand(sqlMonthly, conn))
                 {
                     AddParameters(cmd);
+                    cmd.Parameters.AddWithValue("@MonthlyStartDate", monthlyStartDate);
+                    cmd.Parameters.AddWithValue("@MonthlyEndDate", monthlyEndDate);
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            var totalData = Convert.ToInt64(reader[5]);
+                            var chk = Convert.ToInt64(reader[3]);
                             var ng = Convert.ToInt64(reader[4]);
+                            var total = chk + ng;
+                            var y = reader.GetInt32(1);
+                            var m = reader.GetInt32(2);
                             viewModel.ChartMonthly.Add(new DashboardChartTrend
                             {
                                 Period = reader.GetString(0),
-                                QtyCheck = Convert.ToInt64(reader[3]),
+                                PeriodValue = $"{y}-{m:D2}",
+                                QtyOk = chk,
                                 QtyNg = ng,
-                                RrPercentage = totalData > 0 ? (double)ng / totalData * 100.0 : 0
+                                RrPercentage = total > 0 ? (double)ng / total * 100.0 : 0
                             });
                         }
                     }
@@ -122,9 +152,9 @@ namespace DashboardTest.Repositories
                     SELECT TOP 10
                         KodeItem,
                         MAX(PartName) as PartName,
-                        ISNULL(SUM(QtyNG), 0) as TotalNG
-                    FROM produksi.tb_elwp_produksi_input_produksis
-                    WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilter}
+                        ISNULL(SUM(QtyNgDetailed), 0) as TotalNG
+                    FROM produksi.vw_DashboardRejectionDetailed
+                    WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterDetail}
                     GROUP BY KodeItem
                     ORDER BY TotalNG DESC";
 
@@ -145,16 +175,16 @@ namespace DashboardTest.Repositories
                     }
                 }
 
-                // 4. NG Criteria (Donut)
+                // 4. NG Criteria (Donut) - Now 100% accurate via Smart View
                 string sqlDonut = $@"
                     SELECT 
-                         ISNULL(NULLIF(KeteranganNG, ''), 'Undefined') as KriteriaNG,
-                         ISNULL(SUM(QtyNG), 0) as TotalNG
-                    FROM produksi.tb_elwp_produksi_input_produksis
+                         AlasanNG as KriteriaNG,
+                         ISNULL(SUM(QtyNgDetailed), 0) as TotalNG
+                    FROM produksi.vw_DashboardRejectionDetailed
                     WHERE PlantId = @PlantId 
-                      AND QtyNG > 0
-                      AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilter}
-                    GROUP BY KeteranganNG
+                      AND QtyNgDetailed > 0
+                      AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterDetail}
+                    GROUP BY AlasanNG
                     ORDER BY TotalNG DESC";
 
                 using (var cmd = new SqlCommand(sqlDonut, conn))
@@ -166,7 +196,7 @@ namespace DashboardTest.Repositories
                         {
                             viewModel.ChartNgCriteria.Add(new DashboardChartDonut
                             {
-                                KriteriaNg = reader.GetString(0),
+                                KriteriaNg = reader.IsDBNull(0) ? "UNSPECIFIED" : reader.GetString(0).Trim(),
                                 TotalNg = Convert.ToInt64(reader[1])
                             });
                         }
@@ -174,68 +204,147 @@ namespace DashboardTest.Repositories
                 }
                 
                 // 5. Weekly Trend
+                // Drill-down logic:
+                // - If a specific week is selected (7 days): show only that week
+                // - If a month is selected (28-31 days): show weeks in that month
+                // - Otherwise: show all weeks in current year
+                DateTime weeklyStartDate;
+                DateTime weeklyEndDate;
+                
+                int daysDiff = (int)(endDate - startDate).TotalDays;
+                
+                if (daysDiff <= 7)
+                {
+                    // Drill-down to specific week: show only that week
+                    weeklyStartDate = startDate;
+                    weeklyEndDate = endDate;
+                }
+                else if (daysDiff >= 27 && daysDiff <= 31)
+                {
+                    // Month selected: show weeks in that month
+                    weeklyStartDate = new DateTime(startDate.Year, startDate.Month, 1);
+                    weeklyEndDate = new DateTime(startDate.Year, startDate.Month, DateTime.DaysInMonth(startDate.Year, startDate.Month));
+                }
+                else
+                {
+                    // Overview: show all weeks in current year
+                    weeklyStartDate = new DateTime(DateTime.Now.Year, 1, 1);
+                    weeklyEndDate = endDate;
+                }
+                
                 string sqlWeekly = $@"
                     SELECT 
-                        'W' + CAST(DATEPART(week, TanggalProduksi) as VARCHAR) as Period,
+                        'Week ' + CAST(DATEPART(week, TanggalProduksi) as VARCHAR) as Period,
                         DATEPART(week, TanggalProduksi) as WeekNum,
                         ISNULL(SUM(QtyOk), 0) as QtyCheck,
-                        ISNULL(SUM(QtyNG), 0) as QtyNg,
-                        ISNULL(SUM(QtyOk + QtyNG), 0) as TotalData
+                        ISNULL(SUM(QtyNG), 0) as QtyNg
                     FROM produksi.tb_elwp_produksi_input_produksis
                     WHERE PlantId = @PlantId 
-                      AND YEAR(TanggalProduksi) = YEAR(GETDATE()) 
-                      {dynamicFilter}
+                      AND TanggalProduksi >= @WeeklyStartDate
+                      AND TanggalProduksi <= @WeeklyEndDate
+                      {dynamicFilterHeader}
                     GROUP BY DATEPART(week, TanggalProduksi)
                     ORDER BY WeekNum";
 
                 using (var cmd = new SqlCommand(sqlWeekly, conn))
                 {
                     AddParameters(cmd);
+                    cmd.Parameters.AddWithValue("@WeeklyStartDate", weeklyStartDate);
+                    cmd.Parameters.AddWithValue("@WeeklyEndDate", weeklyEndDate);
+
+                    var weeklyData = new Dictionary<int, DashboardChartTrend>();
+                    
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            var totalData = Convert.ToInt64(reader[4]);
+                            int wNum = reader.GetInt32(1);
+                            var chk = Convert.ToInt64(reader[2]);
                             var ng = Convert.ToInt64(reader[3]);
-                            viewModel.ChartWeekly.Add(new DashboardChartTrend
+                            var total = chk + ng;
+                            
+                            weeklyData[wNum] = new DashboardChartTrend
                             {
                                 Period = reader.GetString(0),
-                                QtyCheck = Convert.ToInt64(reader[2]),
+                                PeriodValue = reader.GetString(0),
+                                QtyOk = chk,
                                 QtyNg = ng,
-                                RrPercentage = totalData > 0 ? (double)ng / totalData * 100.0 : 0
-                            });
+                                RrPercentage = total > 0 ? (double)ng / total * 100.0 : 0
+                            };
                         }
+                    }
+
+                    // Fill in gaps (Zero-Filling)
+                    // Get week number range from C# to match SQL
+                    var culture = System.Globalization.CultureInfo.CurrentCulture;
+                    var calendar = culture.Calendar;
+                    var rule = System.Globalization.CalendarWeekRule.FirstDay;
+                    var firstDayOfWeek = DayOfWeek.Sunday; // Match SQL default
+
+                    int startWeek = calendar.GetWeekOfYear(weeklyStartDate, rule, firstDayOfWeek);
+                    int endWeek = calendar.GetWeekOfYear(weeklyEndDate, rule, firstDayOfWeek);
+                    
+                    // Specific case: if range is within same year, fill smoothly
+                    // If crossing years, it's more complex, but here we usually view YTD or Monthly
+                    if (weeklyStartDate.Year == weeklyEndDate.Year) 
+                    {
+                        for (int w = startWeek; w <= endWeek; w++)
+                        {
+                            if (weeklyData.ContainsKey(w))
+                            {
+                                viewModel.ChartWeekly.Add(weeklyData[w]);
+                            }
+                            else
+                            {
+                                // Add empty week
+                                viewModel.ChartWeekly.Add(new DashboardChartTrend
+                                {
+                                    Period = $"Week {w}",
+                                    PeriodValue = $"Week {w}",
+                                    QtyOk = 0,
+                                    QtyNg = 0,
+                                    RrPercentage = 0
+                                });
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Fallback if cross year, just show what we have
+                         foreach(var item in weeklyData.Values) viewModel.ChartWeekly.Add(item);
                     }
                 }
 
                 // 6. Daily Trend
-                string sqlDaily = $@"
-                    SELECT 
-                        FORMAT(TanggalProduksi, 'dd-MMM') as Period,
-                        ISNULL(SUM(QtyOk), 0) as QtyCheck,
-                        ISNULL(SUM(QtyNG), 0) as QtyNg,
-                        ISNULL(SUM(QtyOk + QtyNG), 0) as TotalData
-                    FROM produksi.tb_elwp_produksi_input_produksis
-                    WHERE PlantId = @PlantId 
-                      AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilter}
-                    GROUP BY TanggalProduksi
-                    ORDER BY TanggalProduksi";
-
-                using (var cmd = new SqlCommand(sqlDaily, conn))
+                using (var cmd = conn.CreateCommand())
                 {
+                    cmd.CommandText = $@"
+                        SELECT 
+                            FORMAT(TanggalProduksi, 'dd-MMM') as Period,
+                            FORMAT(TanggalProduksi, 'yyyy-MM-dd') as PeriodValue,
+                            ISNULL(SUM(QtyOk), 0) as QtyCheck,
+                            ISNULL(SUM(QtyNG), 0) as QtyNg
+                        FROM produksi.tb_elwp_produksi_input_produksis
+                        WHERE PlantId = @PlantId 
+                          AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterHeader}
+                        GROUP BY TanggalProduksi
+                        ORDER BY TanggalProduksi";
+
                     AddParameters(cmd);
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         while (await reader.ReadAsync())
                         {
-                            var totalData = Convert.ToInt64(reader[3]);
-                            var ng = Convert.ToInt64(reader[2]);
+                            var chk = Convert.ToInt64(reader[2]);
+                            var ng = Convert.ToInt64(reader[3]);
+                            var total = chk + ng;
                             viewModel.ChartDaily.Add(new DashboardChartTrend
                             {
                                 Period = reader.GetString(0),
-                                QtyCheck = Convert.ToInt64(reader[1]),
+                                PeriodValue = reader.GetString(1),
+                                QtyOk = chk,
                                 QtyNg = ng,
-                                RrPercentage = totalData > 0 ? (double)ng / totalData * 100.0 : 0
+                                RrPercentage = total > 0 ? (double)ng / total * 100.0 : 0
                             });
                         }
                     }
@@ -245,13 +354,19 @@ namespace DashboardTest.Repositories
                 string sqlTablePart = $@"
                     SELECT 
                         KodeItem,
-                        ISNULL(SUM(QtyOk), 0) as QtyCheck,
-                        ISNULL(SUM(QtyNG), 0) as QtyNg,
-                        ISNULL(SUM(QtyOk + QtyNG), 0) as TotalData
-                    FROM produksi.tb_elwp_produksi_input_produksis
-                    WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilter}
+                        ISNULL(SUM(QtyOk), 0) as QtyOk,
+                        ISNULL(SUM(QtyNgDetailed), 0) as QtyNg
+                    FROM (
+                        SELECT 
+                            KodeItem,
+                            MAX(QtyOk) as QtyOk,
+                            SUM(QtyNgDetailed) as QtyNgDetailed
+                        FROM produksi.vw_DashboardRejectionDetailed
+                        WHERE PlantId = @PlantId AND TanggalProduksi BETWEEN @StartDate AND @EndDate {dynamicFilterDetail}
+                        GROUP BY ProductionId, KodeItem
+                    ) t
                     GROUP BY KodeItem
-                    ORDER BY TotalData DESC";
+                    ORDER BY QtyNg DESC";
 
                 using (var cmd = new SqlCommand(sqlTablePart, conn))
                 {
@@ -260,14 +375,15 @@ namespace DashboardTest.Repositories
                     {
                         while (await reader.ReadAsync())
                         {
-                            var totalData = Convert.ToInt64(reader[3]);
+                            var chk = Convert.ToInt64(reader[1]);
                             var ng = Convert.ToInt64(reader[2]);
+                            var total = chk + ng;
                             viewModel.TablePartRejection.Add(new DashboardTablePart
                             {
                                 KodeItem = reader.GetString(0),
-                                QtyCheck = Convert.ToInt64(reader[1]),
+                                QtyOk = chk,
                                 QtyNg = ng,
-                                RrPercentage = totalData > 0 ? (double)ng / totalData * 100.0 : 0
+                                RrPercentage = total > 0 ? (double)ng / total * 100.0 : 0
                             });
                         }
                     }
@@ -315,12 +431,12 @@ namespace DashboardTest.Repositories
                     }
                 }
 
-                // 2. Jenis NG, Kategori NG, Lines, PartCodes
+                // 2. Jenis NG, Kategori NG, Lines, PartCodes from Header Table
                 string sqlOptions = @"
-                    SELECT DISTINCT [Group] FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND [Group] IS NOT NULL AND [Group] <> '';
-                    SELECT DISTINCT KeteranganNG FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND KeteranganNG IS NOT NULL AND KeteranganNG <> '';
-                    SELECT DISTINCT CAST(AreaId AS VARCHAR) FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND AreaId IS NOT NULL;
-                    SELECT DISTINCT KodeItem FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND KodeItem IS NOT NULL AND KodeItem <> '';";
+                    SELECT DISTINCT [Group] FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND [Group] IS NOT NULL AND [Group] <> '' ORDER BY [Group];
+                    SELECT DISTINCT KeteranganNG FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND KeteranganNG IS NOT NULL AND KeteranganNG <> '-' ORDER BY KeteranganNG;
+                    SELECT DISTINCT CAST(AreaId AS VARCHAR) FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND AreaId IS NOT NULL ORDER BY CAST(AreaId AS VARCHAR);
+                    SELECT DISTINCT KodeItem FROM produksi.tb_elwp_produksi_input_produksis WHERE PlantId = @PlantId AND KodeItem IS NOT NULL AND KodeItem <> '' ORDER BY KodeItem;";
 
                 using (var cmd = new SqlCommand(sqlOptions, conn))
                 {
@@ -328,16 +444,16 @@ namespace DashboardTest.Repositories
                     using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         // Result 1: Jenis NG (Group)
-                        while (await reader.ReadAsync()) options.JenisNg.Add(reader.GetString(0));
+                        while (await reader.ReadAsync()) options.JenisNg.Add(reader.IsDBNull(0) ? "N/A" : reader.GetString(0));
                         // Result 2: Kategori NG (KeteranganNG)
                         if (await reader.NextResultAsync())
-                            while (await reader.ReadAsync()) options.KategoriNg.Add(reader.GetString(0));
+                            while (await reader.ReadAsync()) options.KategoriNg.Add(reader.IsDBNull(0) ? "N/A" : reader.GetString(0));
                         // Result 3: Lines (AreaId)
                         if (await reader.NextResultAsync())
-                            while (await reader.ReadAsync()) options.Lines.Add(reader.GetString(0));
+                            while (await reader.ReadAsync()) options.Lines.Add(reader.IsDBNull(0) ? "0" : reader.GetString(0));
                         // Result 4: PartCodes (KodeItem)
                         if (await reader.NextResultAsync())
-                            while (await reader.ReadAsync()) options.PartCodes.Add(reader.GetString(0));
+                            while (await reader.ReadAsync()) options.PartCodes.Add(reader.IsDBNull(0) ? "N/A" : reader.GetString(0));
                     }
                 }
             }

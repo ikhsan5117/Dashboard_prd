@@ -178,12 +178,13 @@
             background-color: #151e32;
             border-radius: 12px;
             padding: 5px 5px 5px 35px;
-            height: 280px; /* FIX: Gunakan tinggi fix (PX) agar tidak memuai saat resize */
+            flex: 1; /* UBAH: Gunakan flex agar mengisi sisa ruang ke bawah */
+            min-height: 0; /* PENTING: Agar responsif mengecil */
             border: 1px solid rgba(255, 255, 255, 0.05);
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             overflow: hidden;
-            margin-bottom: 5px;
+            margin-bottom: 0px; /* Reset margin, biarkan gap yang mengatur */
         }
 
         .side-chart-card.blue-accent { border-left: 4px solid #3b82f6; }
@@ -193,6 +194,7 @@
         .chart-title-vertical {
             writing-mode: vertical-rl;
             text-orientation: mixed;
+            transform: rotate(180deg);
             position: absolute;
             left: 0px;
             top: 0;
@@ -344,7 +346,9 @@
             display: grid;
             grid-template-columns: 2fr 1fr;
             gap: 10px;
-            flex: 5; /* Diperbesar dari 4 agar area chart Pareto & Donut lebih tinggi/dominan */
+            flex: 4; /* Adjusted from 3.5 to give more room for labels */
+            min-height: 0; 
+            min-width: 0;
         }
 
         .main-chart-card {
@@ -356,6 +360,9 @@
             flex-direction: column;
             position: relative;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            overflow: hidden; /* PENTING: Mencegah chart keluar container */
+            min-height: 0;
+            min-width: 0;
         }
 
         .main-chart-card::before {
@@ -378,11 +385,26 @@
             letter-spacing: 1.5px;
         }
 
+        /* Make X-Axis label distinct and clickable */
+        .apexcharts-xaxis-label {
+            cursor: pointer;
+            fill: #94a3b8; /* Default color */
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .apexcharts-xaxis-label:hover {
+            fill: #3b82f6 !important; /* Blue on hover */
+            font-weight: 700;
+            text-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+        }
+
         .tables-row {
             display: grid;
             grid-template-columns: 1.5fr 1fr;
             gap: 10px;
-            flex: 4; /* Dikurangi dari 5 agar area tabel lebih ramping */
+            flex: 5; /* Increased from 4 to fill space */
+            min-height: 0; 
+            min-width: 0;
         }
 
         /* --- Tables Styling --- */
@@ -539,6 +561,83 @@
             display: flex; justify-content: center; align-items: center; z-index: 9999;
         }
         .spinner-border { color: var(--accent-blue); }
+
+        /* Active Filter Indicator */
+        .active-filter-indicator {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(16, 185, 129, 0.2));
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 8px;
+            padding: 10px 15px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+            font-size: 0.75rem;
+            color: #f8fafc;
+            font-weight: 600;
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.3s ease;
+        }
+
+        @@keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .filter-nav-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-filter-nav {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            color: #93c5fd;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-filter-nav:hover:not(:disabled) {
+            background: rgba(59, 130, 246, 0.4);
+            color: #fff;
+            transform: scale(1.05);
+        }
+
+        .btn-filter-nav:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .filter-label {
+            flex: 1;
+            text-align: center;
+        }
+
+        .btn-clear-filter {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #fca5a5;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-clear-filter:hover {
+            background: rgba(239, 68, 68, 0.4);
+            color: #fff;
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -550,7 +649,7 @@
     <div class="kpi-row">
         <div class="kpi-card gradient-blue">
             <div class="kpi-content">
-                <div class="kpi-label">QTY CHECK (OK)</div>
+                <div class="kpi-label">QTY OK</div>
                 <div class="kpi-value"><span id="kpiCheck">0</span><span class="kpi-unit">pcs</span></div>
             </div>
             <i class="fas fa-check-circle kpi-icon"></i>
@@ -585,7 +684,7 @@
             <div class="side-chart-card blue-accent">
                 <div class="chart-title-vertical">BULANAN</div>
                 <div class="custom-chart-legend">
-                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker check"></div>QTY OK</div>
                     <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
                     <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
                     <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
@@ -595,7 +694,7 @@
             <div class="side-chart-card yellow-accent">
                 <div class="chart-title-vertical">MINGGUAN</div>
                 <div class="custom-chart-legend">
-                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker check"></div>QTY OK</div>
                     <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
                     <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
                     <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
@@ -605,7 +704,7 @@
             <div class="side-chart-card green-accent">
                 <div class="chart-title-vertical">HARIAN</div>
                 <div class="custom-chart-legend">
-                    <div class="legend-item"><div class="l-marker check"></div>QTY CHECK</div>
+                    <div class="legend-item"><div class="l-marker check"></div>QTY OK</div>
                     <div class="legend-item"><div class="l-marker ng"></div>QTY NG</div>
                     <div class="legend-item"><div class="l-marker rr"></div>RR%</div>
                     <div class="legend-item"><div class="l-marker target"></div>TARGET</div>
@@ -628,6 +727,9 @@
                             <option value="3">PLANT RVI</option>
                             <option value="4">PLANT BTR</option>
                         </select>
+                        <button onclick="toggleFullScreen()" class="btn-clear-filter" style="margin-left: 5px; height: 28px; background: rgba(59, 130, 246, 0.2); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa;" title="Fullscreen">
+                            <i class="fas fa-expand"></i>
+                        </button>
                     </div>
                     <div style="text-align:right; color: #64748b; font-size: 0.7rem; font-weight: 600;">
                         <i class="fas fa-clock" style="margin-right: 4px;"></i> Last Update: <span id="lastUpdate">-</span>
@@ -637,29 +739,47 @@
                 <div class="filter-grid">
                     <div class="filter-item">
                         <label>BULAN</label>
-                        <select id="filterMonth" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA BULAN --</option></select>
+                        <select id="filterMonth" class="form-select-dark" onchange="onDropdownChange('month')"><option value="">-- SEMUA BULAN --</option></select>
                     </div>
                     <div class="filter-item">
                         <label>TANGGAL</label>
-                        <select id="filterDate" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA TANGGAL --</option></select>
+                        <select id="filterDate" class="form-select-dark" onchange="onDropdownChange('date')"><option value="">-- SEMUA TANGGAL --</option></select>
                     </div>
                     <div class="filter-item">
                         <label>JENIS NG</label>
-                        <select id="filterJenisNg" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA JENIS --</option></select>
+                        <select id="filterJenisNg" class="form-select-dark" onchange="onDropdownChange('jenisNg')"><option value="">-- SEMUA JENIS --</option></select>
                     </div>
                     <div class="filter-item">
                         <label>KATEGORI NG</label>
-                        <select id="filterKategoriNg" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA KATEGORI --</option></select>
+                        <select id="filterKategoriNg" class="form-select-dark" onchange="onDropdownChange('kategoriNg')"><option value="">-- SEMUA KATEGORI --</option></select>
                     </div>
                     <div class="filter-item">
                         <label>LINE</label>
-                        <select id="filterLine" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA LINE --</option></select>
+                        <select id="filterLine" class="form-select-dark" onchange="onDropdownChange('line')"><option value="">-- SEMUA LINE --</option></select>
                     </div>
                     <div class="filter-item">
                         <label>PART CODE</label>
-                        <select id="filterPartCode" class="form-select-dark" onchange="loadData()"><option value="">-- SEMUA PART --</option></select>
+                        <select id="filterPartCode" class="form-select-dark" onchange="onDropdownChange('partCode')"><option value="">-- SEMUA PART --</option></select>
                     </div>
                 </div>
+            </div>
+
+            <!-- Active Filter Indicator -->
+            <div id="activeFilterIndicator" class="active-filter-indicator" style="display: none;">
+                <div class="filter-nav-buttons">
+                    <button id="btnFilterBack" onclick="navigateBack()" class="btn-filter-nav" disabled>
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                    <button id="btnFilterForward" onclick="navigateForward()" class="btn-filter-nav" disabled>
+                        Forward <i class="fas fa-arrow-right"></i>
+                    </button>
+                </div>
+                <div id="filterLabel" class="filter-label">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                <button onclick="clearFilter()" class="btn-clear-filter">
+                    <i class="fas fa-times"></i> Clear All
+                </button>
             </div>
 
             <!-- Charts Row -->
@@ -684,7 +804,7 @@
                                 <tr>
                                     <th style="text-align: center;">No</th>
                                     <th>Kode Item</th>
-                                    <th>Qty Check</th>
+                                    <th>Qty OK</th>
                                     <th>Qty NG</th>
                                     <th>RR%</th>
                                 </tr>
@@ -729,6 +849,181 @@
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
+    // Global Filter State with History
+    const filterState = {
+        type: null,        // 'monthly' | 'weekly' | 'daily' | 'part' | 'criteria'
+        value: null,       // Selected value
+        dateRange: null    // Calculated { startDate, endDate }
+    };
+
+    const filterHistory = {
+        stack: [],
+        currentIndex: -1
+    };
+
+    function applyFilter(type, value) {
+        let dr = filterState.dateRange; // Preserve existing date range
+        
+        if (type === 'monthly') {
+            // value format assumed: YYYY-MM
+            const parts = value.split('-');
+            if(parts.length >= 2) {
+                const y = parseInt(parts[0]);
+                const m = parseInt(parts[1]);
+                const lastDay = new Date(y, m, 0).getDate();
+                dr = {
+                    startDate: `${y}-${String(m).padStart(2, '0')}-01`,
+                    endDate: `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+                };
+            }
+        } else if (type === 'weekly') {
+            // value format: "Week 5", "W5", etc.
+            const match = value.match(/\d+/);
+            const weekNum = match ? parseInt(match[0]) : 0;
+            const currentYear = new Date().getFullYear();
+            
+            // Calculate start and end date of the week
+            // Using ISO week date calculation
+            const jan1 = new Date(currentYear, 0, 1);
+            const daysToFirstMonday = (8 - jan1.getDay()) % 7;
+            const firstMonday = new Date(currentYear, 0, 1 + daysToFirstMonday);
+            
+            // Calculate the start of the selected week
+            const weekStart = new Date(firstMonday);
+            weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+            
+            // Calculate the end of the selected week (6 days after start)
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            
+            dr = {
+                startDate: weekStart.toISOString().split('T')[0],
+                endDate: weekEnd.toISOString().split('T')[0]
+            };
+        } else if (type === 'daily') {
+             dr = { startDate: value, endDate: value };
+        } else if (type === 'part' || type === 'criteria') {
+             // For part/criteria, keep existing date range
+             // Just update type and value in filterState
+        }
+        
+        // If type is part or criteria, we keep the dr as is.
+        
+        const newState = { type, value, dateRange: dr };
+        pushToHistory(newState);
+        restoreState(newState);
+    }
+
+    function pushToHistory(state) {
+        if (filterHistory.currentIndex < filterHistory.stack.length - 1) {
+            filterHistory.stack = filterHistory.stack.slice(0, filterHistory.currentIndex + 1);
+        }
+        filterHistory.stack.push({ ...state });
+        filterHistory.currentIndex = filterHistory.stack.length - 1;
+    }
+
+    function navigateBack() {
+        if (filterHistory.currentIndex > 0) {
+            filterHistory.currentIndex--;
+            restoreState(filterHistory.stack[filterHistory.currentIndex]);
+        }
+    }
+
+    function navigateForward() {
+        if (filterHistory.currentIndex < filterHistory.stack.length - 1) {
+            filterHistory.currentIndex++;
+            restoreState(filterHistory.stack[filterHistory.currentIndex]);
+        }
+    }
+
+    function restoreState(state) {
+        filterState.type = state.type;
+        filterState.value = state.value;
+        filterState.dateRange = state.dateRange;
+        updateDropdownsFromFilter(); // Sync dropdowns with filter state
+        updateFilterIndicator();
+        updateNavigationButtons();
+        loadData();
+    }
+
+    function updateDropdownsFromFilter() {
+        // Sync dropdowns based on active filter
+        if (filterState.type === 'monthly' && filterState.value) {
+            document.getElementById('filterMonth').value = filterState.value;
+            document.getElementById('filterDate').value = ''; // Clear date filter
+        } else if (filterState.type === 'daily' && filterState.value) {
+            document.getElementById('filterDate').value = filterState.value;
+            document.getElementById('filterMonth').value = ''; // Clear month filter
+        } else if (filterState.type === 'weekly') {
+            // Weekly doesn't have dropdown, so clear month and date
+            document.getElementById('filterMonth').value = '';
+            document.getElementById('filterDate').value = '';
+        } else if (filterState.type === 'part' && filterState.value) {
+            document.getElementById('filterPartCode').value = filterState.value;
+        } else if (filterState.type === 'criteria' && filterState.value) {
+            document.getElementById('filterKategoriNg').value = filterState.value;
+        } else if (!filterState.type) {
+            // Clear all dropdowns when no filter is active
+            document.getElementById('filterMonth').value = '';
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterJenisNg').value = '';
+            document.getElementById('filterKategoriNg').value = '';
+            document.getElementById('filterLine').value = '';
+            document.getElementById('filterPartCode').value = '';
+        }
+    }
+
+    function updateNavigationButtons() {
+        const btnBack = document.getElementById('btnFilterBack');
+        const btnForward = document.getElementById('btnFilterForward');
+        if (btnBack) btnBack.disabled = filterHistory.currentIndex <= 0;
+        if (btnForward) btnForward.disabled = filterHistory.currentIndex >= filterHistory.stack.length - 1;
+    }
+
+    function updateFilterIndicator() {
+        const indicator = document.getElementById('activeFilterIndicator');
+        const filterLabel = document.getElementById('filterLabel');
+        
+        if (filterState.type) {
+            let filterText = '';
+            if (filterState.type === 'monthly') {
+                filterText = `📅 Month: ${filterState.value}`;
+            } else if (filterState.type === 'weekly') {
+                // Show date range for weekly filter
+                if (filterState.dateRange) {
+                    const start = new Date(filterState.dateRange.startDate);
+                    const end = new Date(filterState.dateRange.endDate);
+                    const formatDate = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    filterText = `📅 ${filterState.value} (${formatDate(start)} - ${formatDate(end)})`;
+                } else {
+                    filterText = `📅 Week: ${filterState.value}`;
+                }
+            } else if (filterState.type === 'daily') {
+                filterText = `📅 Date: ${filterState.value}`;
+            } else if (filterState.type === 'part') {
+                filterText = `🔧 Part: ${filterState.value}`;
+            } else if (filterState.type === 'criteria') {
+                filterText = `⚠️ Criteria: ${filterState.value}`;
+            }
+            
+            filterLabel.innerHTML = `<i class="fas fa-filter"></i> ${filterText}`;
+            indicator.style.display = 'flex';
+        } else {
+            indicator.style.display = 'none';
+        }
+    }
+
+    function clearFilter() {
+        filterState.type = null;
+        filterState.value = null;
+        filterState.dateRange = null;
+        filterHistory.stack = [];
+        filterHistory.currentIndex = -1;
+        updateFilterIndicator();
+        updateNavigationButtons();
+        loadData();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         onPlantChange(); // Initialize filter options and data
         
@@ -740,6 +1035,44 @@
         const plantId = document.getElementById('filterPlant').value;
         loadFilterOptions(plantId);
         loadData();
+    }
+
+    function onDropdownChange(filterType) {
+        // When dropdown changes, update filterState accordingly
+        const value = document.getElementById(getDropdownId(filterType)).value;
+        
+        if (!value) {
+            // If dropdown is cleared, clear the filter
+            clearFilter();
+            return;
+        }
+
+        // Update filterState based on dropdown type
+        if (filterType === 'month') {
+            applyFilter('monthly', value);
+        } else if (filterType === 'date') {
+            applyFilter('daily', value);
+        } else if (filterType === 'partCode') {
+            applyFilter('part', value);
+        } else if (filterType === 'kategoriNg') {
+            applyFilter('criteria', value);
+        } else {
+            // For line and jenisNg, just reload data without setting filterState
+            // This allows them to work as additional filters
+            loadData();
+        }
+    }
+
+    function getDropdownId(filterType) {
+        const mapping = {
+            'month': 'filterMonth',
+            'date': 'filterDate',
+            'jenisNg': 'filterJenisNg',
+            'kategoriNg': 'filterKategoriNg',
+            'line': 'filterLine',
+            'partCode': 'filterPartCode'
+        };
+        return mapping[filterType] || filterType;
     }
 
     function loadFilterOptions(plantId) {
@@ -760,15 +1093,22 @@
 
     function populateDropdown(id, list, defaultText) {
         const sel = document.getElementById(id);
+        if (!sel) return;
+        
         const currentVal = sel.value;
         sel.innerHTML = `<option value="">${defaultText}</option>`;
-        list.forEach(item => {
-            const opt = document.createElement('option');
-            opt.value = item;
-            opt.textContent = item;
-            if (item === currentVal) opt.selected = true;
-            sel.appendChild(opt);
-        });
+        
+        if (list && Array.isArray(list)) {
+            list.forEach(item => {
+                if (item !== null && item !== undefined && item !== '') {
+                    const opt = document.createElement('option');
+                    opt.value = item;
+                    opt.textContent = item;
+                    if (item === currentVal) opt.selected = true;
+                    sel.appendChild(opt);
+                }
+            });
+        }
     }
 
     function loadData() {
@@ -782,26 +1122,42 @@
         const line = document.getElementById('filterLine').value;
         const partCode = document.getElementById('filterPartCode').value;
 
-        // Calculate dates based on month or selected date
+        // Calculate dates based on filterState first, then fallback to dropdown
         let startDate = '', endDate = '';
-        if (date) {
+        if (filterState.dateRange) {
+            // Use date range from chart click (monthly/weekly/daily)
+            startDate = filterState.dateRange.startDate;
+            endDate = filterState.dateRange.endDate;
+        } else if (date) {
+            // Use date from dropdown
             startDate = date;
             endDate = date;
         } else if (month) {
             const [y, m] = month.split('-');
             startDate = `${y}-${m}-01`;
             const last = new Date(y, m, 0).getDate();
-            endDate = `${y}-${m}-${last}`;
+            endDate = `${y}-${m}-${String(last).padStart(2, '0')}`;
         } else {
-            // Default: current month
+            // Default: Year-to-Date (from Jan 1st of current year)
+            // This ensures Monthly Trend shows all months in current year (e.g. Jan & Feb)
             const now = new Date();
-            const y = now.getFullYear();
-            const m = String(now.getMonth() + 1).padStart(2, '0');
-            startDate = `${y}-${m}-01`;
+            const y = now.getFullYear(); // Current Year
+            startDate = `${y}-01-01`;    // Jan 1st
+            // End Date is end of current month to include all potential data
             endDate = new Date(y, now.getMonth() + 1, 0).toISOString().split('T')[0];
         }
 
-        const url = `/Dashboard/GetData?plantId=${plantId}&startDate=${startDate}&endDate=${endDate}&line=${encodeURIComponent(line)}&jenisNg=${encodeURIComponent(jenisNg)}&kategoriNg=${encodeURIComponent(kategoriNg)}&partCode=${encodeURIComponent(partCode)}`;
+        // Use filterState values if set (from chart click), otherwise use dropdown values
+        let finalLine = line;
+        let finalJenisNg = jenisNg;
+        let finalKategoriNg = kategoriNg;
+        let finalPartCode = partCode;
+
+        // Override with filterState if active (from chart click)
+        if (filterState.type === 'part') finalPartCode = filterState.value;
+        if (filterState.type === 'criteria') finalKategoriNg = filterState.value;
+
+        const url = `/Dashboard/GetData?plantId=${plantId}&startDate=${startDate}&endDate=${endDate}&line=${encodeURIComponent(finalLine)}&jenisNg=${encodeURIComponent(finalJenisNg)}&kategoriNg=${encodeURIComponent(finalKategoriNg)}&partCode=${encodeURIComponent(finalPartCode)}`;
 
         fetch(url)
             .then(response => response.json())
@@ -825,7 +1181,7 @@
     }
 
     function updateKPI(kpi) {
-        animateValue("kpiCheck", kpi.totalCheck);
+        animateValue("kpiCheck", kpi.totalOk);
         animateValue("kpiNg", kpi.totalNg);
         // animateValue("kpiRr", kpi.rrPercentage.toFixed(2)); // Float needs diff handling
         document.getElementById('kpiRr').innerText = kpi.rrPercentage.toFixed(2);
@@ -842,7 +1198,15 @@
             background: 'transparent', 
             toolbar: { show: false }, 
             foreColor: '#94a3b8', 
-            fontFamily: 'Inter, sans-serif' 
+            fontFamily: 'Inter, sans-serif',
+            animations: {
+                enabled: true,
+                dynamicAnimation: {
+                    enabled: true,
+                    speed: 350
+                }
+            },
+            redrawOnParentResize: true
         },
         theme: { mode: 'dark' },
         grid: { 
@@ -850,115 +1214,139 @@
             strokeDashArray: 4,
             xaxis: { lines: { show: false } },
             yaxis: { lines: { show: true } },
-            padding: { top: 10, right: 10, bottom: 0, left: 10 } 
+            padding: { top: 10, right: 10, bottom: 30, left: 10 } 
         },
-        legend: { show: false }, /* Matikan total legend bawaan secara global */
+        xaxis: {
+            labels: {
+                style: { fontSize: '9px', colors: '#94a3b8' },
+                rotate: -45,
+                rotateAlways: false,
+                hideOverlappingLabels: true,
+                maxHeight: 45
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+            tickPlacement: 'on'
+        },
+        legend: { show: false },
         dataLabels: { enabled: false },
-        tooltip: { theme: 'dark' }
+        tooltip: { theme: 'dark', shared: true, intersect: false },
+        responsive: [{
+            breakpoint: 10000,
+            options: {
+                chart: {
+                    width: '100%'
+                }
+            }
+        }]
     };
 
     function renderLeftCharts(d) {
-        const getMixedOptions = (data) => {
-            return {
-                series: [
-                    { name: 'QTY CHECK', type: 'column', data: data.map(x => x.qtyCheck || 0) },
+        const getMixedOptions = (data, chartType) => {
+            let seriesConfig = [];
+            let colors = [];
+            let stroke = {};
+            let fill = {};
+
+            if (filterState.type === 'criteria') {
+                seriesConfig = [
                     { name: 'QTY NG', type: 'column', data: data.map(x => x.qtyNg || 0) },
                     { name: 'RR%', type: 'line', data: data.map(x => x.rrPercentage || 0) },
                     { name: 'Target', type: 'line', data: data.map(x => 2.0) }
-                ],
-                chart: { 
-                    height: '100%', 
-                    type: 'bar', 
-                    stacked: true, 
-                    toolbar: { show: false },
-                    sparkline: { enabled: false },
-                    background: 'transparent',
-                    foreColor: '#94a3b8',
-                    fontFamily: 'Inter, sans-serif'
-                },
-                stroke: { 
-                    width: [0, 0, 3, 2], 
-                    dashArray: [0, 0, 0, 8], 
-                    curve: 'smooth' 
-                },
-                colors: ['#3b82f6', '#f59e0b', '#10b981', '#ef4444'],
-                plotOptions: { 
-                    bar: { 
-                        columnWidth: '40%', 
-                        borderRadius: 0
-                    } 
-                },
-                fill: { 
+                ];
+                colors = ['#f59e0b', '#10b981', '#ef4444'];
+                stroke = { width: [0, 3, 2], dashArray: [0, 0, 8], curve: 'smooth' };
+                fill = { type: ['solid', 'solid', 'solid'] };
+            } else {
+                seriesConfig = [
+                    { name: 'QTY OK', type: 'column', data: data.map(x => x.qtyOk || 0) },
+                    { name: 'QTY NG', type: 'column', data: data.map(x => x.qtyNg || 0) },
+                    { name: 'RR%', type: 'line', data: data.map(x => x.rrPercentage || 0) },
+                    { name: 'Target', type: 'line', data: data.map(x => 2.0) }
+                ];
+                colors = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444'];
+                stroke = { width: [0, 0, 3, 2], dashArray: [0, 0, 0, 8], curve: 'smooth' };
+                fill = { 
                     type: ['gradient', 'solid', 'solid', 'solid'],
                     gradient: {
-                        shade: 'dark',
-                        type: "vertical",
-                        shadeIntensity: 0.5,
-                        gradientToColors: ['#60a5fa'], 
-                        opacityFrom: 1,
-                        opacityTo: 0.8,
-                        stops: [0, 100]
+                        shade: 'dark', type: "vertical", shadeIntensity: 0.5,
+                        gradientToColors: ['#60a5fa'], opacityFrom: 1, opacityTo: 0.8, stops: [0, 100]
+                    }
+                };
+            }
+
+            return {
+                series: seriesConfig,
+                chart: {
+                    type: 'line',
+                    height: '100%',
+                    stacked: true,
+                    toolbar: { show: false },
+                    events: {
+                        dataPointSelection: (event, chartContext, config) => {
+                            if (config.dataPointIndex === -1) return;
+                            const selected = data[config.dataPointIndex].periodValue || data[config.dataPointIndex].period;
+                            applyFilter(chartType, selected);
+                        },
+                        click: (event, chartContext, config) => {
+                            if (config.dataPointIndex === -1) {
+                                const hoveredIndex = chartContext.w.globals.capturedDataPointIndex;
+                                if (hoveredIndex !== undefined && hoveredIndex !== -1 && hoveredIndex < data.length) {
+                                    const selected = data[hoveredIndex].periodValue || data[hoveredIndex].period;
+                                    applyFilter(chartType, selected);
+                                }
+                            }
+                        }
                     }
                 },
-                markers: { size: [0, 0, 4, 0] },
                 xaxis: { 
                     categories: data.map(x => x.period),
-                    labels: { style: { fontSize: '8px' } },
-                    axisBorder: { show: false },
-                    axisTicks: { show: false }
+                    labels: { rotate: data.length > 7 ? -45 : 0 }
                 },
+                colors: colors,
+                stroke: stroke,
+                fill: fill,
                 yaxis: [
-                    { 
-                        seriesName: 'QTY CHECK',
-                        title: { text: undefined },
-                        labels: { 
-                            style: { fontSize: '8px' },
-                            formatter: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v.toFixed(0)
-                        }
-                    },
-                    { 
-                        seriesName: 'QTY CHECK',
-                        show: false 
-                    },
-                    { 
-                        seriesName: 'RR%',
-                        opposite: true, 
-                        min: 0, max: 10,
-                        labels: { 
-                            style: { fontSize: '8px', colors: '#10b981' },
-                            formatter: (v) => v.toFixed(1) + '%' 
-                        }
-                    },
-                    { 
-                        seriesName: 'RR%',
-                        show: false,
-                        opposite: true
-                    }
+                    { seriesName: 'QTY OK', title: { show: false }, labels: { style: { colors: '#94a3b8' }, formatter: (v) => v >= 1000 ? (v/1000).toFixed(0) + 'K' : v.toFixed(0) } },
+                    { seriesName: 'QTY OK', show: false },
+                    { seriesName: 'RR%', opposite: true, min: 0, max: 10, title: { show: false }, labels: { style: { colors: '#10b981' }, formatter: (v) => v.toFixed(1) + '%' } },
+                    { seriesName: 'RR%', show: false }
                 ],
-                legend: { show: false },
-                grid: { 
-                    borderColor: 'rgba(255,255,255,0.2)', 
-                    strokeDashArray: 4,
-                    xaxis: { lines: { show: false } },
-                    yaxis: { lines: { show: true } }
+                plotOptions: {
+                    bar: {
+                        columnWidth: data.length === 1 ? '20%' : (data.length <= 3 ? '30%' : '40%'),
+                        borderRadius: 2
+                    }
                 },
-                tooltip: { 
-                    shared: true, 
-                    intersect: false,
+                grid: { padding: { bottom: 5, left: 10, right: 10, top: 0 } },
+                markers: { size: [0, 0, 4, 0] },
+                dataLabels: {
+                    enabled: true,
+                    enabledOnSeries: [1], // Hanya tampilkan label untuk QTY NG (index 1)
+                    offsetY: -20,
+                    style: { fontSize: '10px', fontWeight: 700, colors: ['#f59e0b'] },
+                    formatter: function(val) {
+                        return val > 0 ? val.toLocaleString() : '';
+                    }
+                },
+                tooltip: {
                     theme: 'dark',
                     y: {
-                        formatter: function(val, { seriesIndex }) {
-                            if (seriesIndex <= 1) return val.toLocaleString() + " pcs";
-                            return val.toFixed(2) + "%";
+                        formatter: function(val, { series, seriesIndex, dataPointIndex, w }) {
+                            const name = w.config.series[seriesIndex].name;
+                            if (name === 'RR%' || name === 'Target') {
+                                return val.toFixed(2) + '%';
+                            }
+                            return Math.floor(val).toLocaleString() + ' pcs';
                         }
                     }
                 }
             };
         };
 
-        createChart("#chartMonthly", getMixedOptions(d.chartMonthly));
-        createChart("#chartWeekly", getMixedOptions(d.chartWeekly));
-        createChart("#chartDaily", getMixedOptions(d.chartDaily));
+        createChart("#chartMonthly", getMixedOptions(d.chartMonthly, 'monthly'));
+        createChart("#chartWeekly", getMixedOptions(d.chartWeekly, 'weekly'));
+        createChart("#chartDaily", getMixedOptions(d.chartDaily, 'daily'));
     }
 
     function renderMainCharts(d) {
@@ -967,80 +1355,39 @@
             series: [{ name: 'Total NG', data: d.chartParetoPart.map(x => x.totalNg) }],
             chart: { 
                 type: 'bar', 
-                height: '100%', 
-                background: 'transparent',
-                toolbar: { show: false },
-                dropShadow: {
-                    enabled: true,
-                    top: 5,
-                    left: 2,
-                    blur: 10,
-                    opacity: 0.15,
-                    color: '#3b82f6'
+                height: '100%',
+                events: {
+                    dataPointSelection: (event, chartContext, config) => {
+                        if (config.dataPointIndex === -1) return;
+                        const selected = d.chartParetoPart[config.dataPointIndex].kodeItem;
+                        applyFilter('part', selected);
+                    }
                 }
             },
             xaxis: { 
-                categories: d.chartParetoPart.map(x => x.kodeItem), 
-                labels: { rotate: -45, style: { fontSize: '9px', fontWeight: 600, colors: '#94a3b8' } },
-                axisBorder: { show: false },
-                axisTicks: { show: false }
+                categories: d.chartParetoPart.map(x => x.kodeItem),
+                labels: { rotate: -45 }
             },
             plotOptions: { 
                 bar: { 
-                    borderRadius: 0, 
-                    columnWidth: '45%',
+                    borderRadius: 2, 
+                    columnWidth: '50%',
                     distributed: true,
                     dataLabels: { position: 'top' }
                 } 
             },
-            colors: [
-                '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', 
-                '#1e3a8a', '#172554', '#3b82f6', '#2563eb', 
-                '#1d4ed8', '#1e40af'
-            ],
-            fill: {
-                type: 'gradient',
-                gradient: {
-                    shade: 'dark',
-                    type: "vertical",
-                    shadeIntensity: 0.5,
-                    gradientToColors: ['#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'], 
-                    inverseColors: true,
-                    opacityFrom: 1,
-                    opacityTo: 0.8,
-                    stops: [0, 100]
-                }
-            },
+            colors: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af'],
             dataLabels: { 
                 enabled: true, 
-                style: { 
-                    fontSize: '11px', 
-                    fontWeight: 800, 
-                    colors: ['#f8fafc'] 
-                }, 
-                offsetY: -22,
-                formatter: (val) => val.toLocaleString(),
-                background: {
-                    enabled: true,
-                    foreColor: '#fff',
-                    padding: 4,
-                    borderRadius: 4,
-                    borderWidth: 0,
-                    opacity: 0.1,
-                    dropShadow: { enabled: false }
-                }
+                offsetY: -20,
+                style: { fontSize: '10px', fontWeight: 700, colors: ['#fff'] },
+                formatter: (val) => val.toLocaleString()
             },
-            grid: { 
-                borderColor: 'rgba(255,255,255,0.2)', 
-                strokeDashArray: 4, 
-                xaxis: { lines: { show: false } },
-                yaxis: { lines: { show: true } }
-            },
-            legend: { show: false },
-            tooltip: { 
+            tooltip: {
                 theme: 'dark',
-                y: { formatter: (v) => v.toLocaleString() + " pcs" }
-            }
+                y: { formatter: (val) => val.toLocaleString() + ' pcs' }
+            },
+            grid: { padding: { bottom: 25 } }
         });
 
         // Donut
@@ -1049,38 +1396,44 @@
             labels: d.chartNgCriteria.map(x => x.kriteriaNg),
             chart: { 
                 type: 'donut', 
-                height: '100%', 
-                background: 'transparent' 
+                height: '100%',
+                events: {
+                    dataPointSelection: (event, chartContext, config) => {
+                        if (config.dataPointIndex === -1) return;
+                        const selected = d.chartNgCriteria[config.dataPointIndex].kriteriaNg;
+                        applyFilter('criteria', selected);
+                    }
+                }
             },
             legend: { 
                 show: true,
                 position: 'right', 
                 fontSize: '11px', 
-                width: 140,
                 labels: { colors: '#94a3b8' },
-                markers: { radius: 2 }
+                itemMargin: { vertical: 2 }
             },
-            plotOptions: { 
-                pie: { 
-                    donut: { 
-                        size: '70%', 
-                        labels: { 
-                            show: true, 
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            name: { show: true, fontSize: '12px', color: '#94a3b8', offsetY: -5 },
+                            value: { show: true, fontSize: '18px', color: '#fff', fontWeight: 700, offsetY: 5, formatter: (v) => v.toLocaleString() },
                             total: { 
-                                show: true, 
-                                label: 'TOTAL NG', 
-                                fontSize: '11px', 
-                                color: '#94a3b8',
-                                fontWeight: 600,
+                                show: true, label: 'TOTAL NG', fontSize: '10px', color: '#94a3b8',
                                 formatter: () => d.chartNgCriteria.reduce((a, b) => a + b.totalNg, 0).toLocaleString()
-                            },
-                            value: { fontSize: '18px', fontWeight: 700, color: '#fff' }
-                        } 
-                    } 
-                } 
+                            }
+                        }
+                    }
+                }
             },
             stroke: { show: true, width: 2, colors: ['#151e32'] },
-            dataLabels: { enabled: false }
+            dataLabels: { enabled: false },
+            tooltip: {
+                theme: 'dark',
+                y: { formatter: (val) => val.toLocaleString() + ' pcs' }
+            }
         });
     }
 
@@ -1105,10 +1458,10 @@
         
         const tbPart = document.querySelector("#tablePart tbody");
         tbPart.innerHTML = pagedItems.map((r, i) => `
-            <tr>
+            <tr onclick="applyFilter('part', '${r.kodeItem}')" style="cursor: pointer; transition: background 0.2s;">
                 <td style="text-align:center; color:#94a3b8;">${start + i + 1}</td>
                 <td><span style="color:#fff; font-weight:600;">${r.kodeItem}</span></td>
-                <td>${r.qtyCheck.toLocaleString()}</td>
+                <td>${r.qtyOk.toLocaleString()}</td>
                 <td class="text-danger">${r.qtyNg.toLocaleString()}</td>
                 <td><span class="badge-rr ${r.rrPercentage > 1 ? 'bg-red-soft' : 'bg-green-soft'}">${r.rrPercentage.toFixed(2)}%</span></td>
             </tr>
@@ -1133,7 +1486,7 @@
 
         const tbNg = document.querySelector("#tableNg tbody");
         tbNg.innerHTML = pagedItems.map((r, i) => `
-            <tr>
+            <tr onclick="applyFilter('criteria', '${r.kriteriaNg}')" style="cursor: pointer; transition: background 0.2s;">
                 <td style="text-align:center; color:#94a3b8;">${start + i + 1}</td>
                 <td>${r.kriteriaNg}</td>
                 <td class="text-danger" style="font-weight:bold;">${r.totalNg.toLocaleString()}</td>
@@ -1161,15 +1514,63 @@
     let charts = {};
     function createChart(selector, options) {
         if (charts[selector]) charts[selector].destroy();
-        charts[selector] = new ApexCharts(document.querySelector(selector), { ...commonOpts, ...options });
+        
+        // Deep merge logic simplified to handle only needed objects
+        const mergedOptions = { ...commonOpts, ...options };
+        
+        // Deep merge for chart context
+        if (commonOpts.chart && options.chart) {
+            mergedOptions.chart = { ...commonOpts.chart, ...options.chart };
+            if (commonOpts.chart.events && options.chart.events) {
+                mergedOptions.chart.events = { ...commonOpts.chart.events, ...options.chart.events };
+            }
+        }
+        
+        // Deep merge for xaxis nested objects (labels, etc)
+        if (commonOpts.xaxis && options.xaxis) {
+            mergedOptions.xaxis = { ...commonOpts.xaxis, ...options.xaxis };
+            if (commonOpts.xaxis.labels && options.xaxis.labels) {
+                mergedOptions.xaxis.labels = { ...commonOpts.xaxis.labels, ...options.xaxis.labels };
+            }
+        }
+
+        // Deep merge for grid
+        if (commonOpts.grid && options.grid) {
+            mergedOptions.grid = { ...commonOpts.grid, ...options.grid };
+            if (commonOpts.grid.padding && options.grid.padding) {
+                mergedOptions.grid.padding = { ...commonOpts.grid.padding, ...options.grid.padding };
+            }
+        }
+        
+        charts[selector] = new ApexCharts(document.querySelector(selector), mergedOptions);
         charts[selector].render();
     }
 
     function animateValue(id, end) {
         const obj = document.getElementById(id);
         if(!obj) return;
-        obj.innerText = end.toLocaleString(); 
+        const val = (end === null || end === undefined) ? 0 : end;
+        obj.innerText = val.toLocaleString(); 
     }
+
+    function toggleFullScreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                alert(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+            });
+        } else {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    }
+
+    // Harmless Hack: Force chart resize on fullscreen change
+    document.addEventListener('fullscreenchange', () => {
+        setTimeout(() => {
+            window.dispatchEvent(new Event('resize'));
+        }, 300); // Tunggu transisi layar selesai
+    });
 </script>
 
 </body>

@@ -29,6 +29,9 @@ namespace DashboardTest.Controllers
             if (!startDate.HasValue) startDate = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1);
             if (!endDate.HasValue) endDate = DateTime.Now;
 
+            // Ensure endDate includes the entire day (23:59:59)
+            endDate = endDate.Value.Date.AddDays(1).AddSeconds(-1);
+
             try
             {
                 var data = await _repository.GetDashboardDataAsync(plantId, startDate.Value, endDate.Value, line, jenisNg, kategoriNg, partCode);
