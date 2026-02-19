@@ -46,9 +46,38 @@
             padding: 10px;
         }
 
-        /* TV Optimization: Scale up on large screens */
+        /* Responsive Design for Different Screen Sizes */
+        /* Small screens (laptops) */
+        @@media (max-width: 1366px) {
+            body { font-size: 0.8rem; }
+            .kpi-value { font-size: 1.8rem; }
+            .kpi-icon { font-size: 2.5rem; }
+            .content-grid { grid-template-columns: 32% 68%; }
+        }
+        
+        /* Medium screens (desktop) */
+        @@media (min-width: 1367px) and (max-width: 1919px) {
+            body { font-size: 0.85rem; }
+            .kpi-value { font-size: 2.2rem; }
+            .kpi-icon { font-size: 3.2rem; }
+            .content-grid { grid-template-columns: 35% 65%; }
+        }
+        
+        /* Large screens (TV/4K) */
         @@media (min-width: 1920px) {
             body { font-size: 1rem; }
+            .kpi-value { font-size: 2.5rem; }
+            .kpi-icon { font-size: 3.8rem; }
+            .content-grid { grid-template-columns: 35% 65%; }
+            .kpi-row { height: 12vh; min-height: 120px; max-height: 140px; }
+        }
+        
+        /* Ultra-wide screens */
+        @@media (min-width: 2560px) {
+            body { font-size: 1.1rem; }
+            .kpi-value { font-size: 2.8rem; }
+            .kpi-icon { font-size: 4.2rem; }
+            .content-grid { grid-template-columns: 30% 70%; }
         }
 
         .dashboard-container {
@@ -163,7 +192,15 @@
             grid-template-columns: 35% 65%; /* Perlebar kolom kiri dari 28% ke 35% agar grafik tren lebih panjang */
             gap: 10px;
             flex-grow: 1;
+            min-height: 0; /* Important for flex children */
             height: calc(100vh - 12vh - 30px); /* Fill remaining space */
+        }
+        
+        /* Ensure consistent height calculation */
+        @@media (min-width: 1920px) {
+            .content-grid {
+                height: calc(100vh - 12vh - 30px);
+            }
         }
 
         /* Left Column (Charts Stacked) */
@@ -231,6 +268,15 @@
             bottom: 5px;
             width: auto;
             height: auto;
+            min-width: 0;
+            min-height: 0;
+        }
+        
+        /* Ensure chart containers resize properly */
+        .side-chart-card .apexcharts-canvas,
+        .main-chart-card .apexcharts-canvas {
+            width: 100% !important;
+            height: 100% !important;
         }
 
         /* --- Force Hide ApexCharts Legend --- */
@@ -279,7 +325,7 @@
         .right-col {
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 25px; /* Ditingkatkan untuk memberi jarak lebih antar baris */
             height: 100%;
         }
 
@@ -290,7 +336,7 @@
             padding: 8px 12px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            margin-bottom: 2px;
+            margin-bottom: 10px; /* Ditingkatkan */
         }
 
         .filter-header {
@@ -350,6 +396,24 @@
             min-height: 0; 
             min-width: 0;
         }
+        
+        /* Responsive chart row for small screens */
+        @@media (max-width: 1366px) {
+            .charts-row {
+                grid-template-columns: 1.5fr 1fr;
+                gap: 8px;
+            }
+            
+            /* Ensure donut chart has enough space and is visible */
+            .main-chart-card:nth-child(2) {
+                min-height: 350px;
+            }
+            
+            /* Give more space to donut chart container */
+            #chartDonut {
+                min-height: 320px !important;
+            }
+        }
 
         .main-chart-card {
             background: #151e32;
@@ -363,6 +427,33 @@
             overflow: hidden; /* PENTING: Mencegah chart keluar container */
             min-height: 0;
             min-width: 0;
+        }
+        
+        /* Ensure chart divs take full available space */
+        .main-chart-card > div[id^="chart"] {
+            flex: 1;
+            min-height: 0;
+            min-width: 0;
+            position: relative;
+        }
+        
+        /* Donut chart specific styling for small screens */
+        @@media (max-width: 1366px) {
+            #chartDonut {
+                min-height: 320px !important;
+            }
+            
+            /* Let ApexCharts handle legend scroll */
+            .main-chart-card .apexcharts-legend {
+                padding: 0 !important;
+            }
+            
+            /* Ensure donut chart container takes full height */
+            .main-chart-card:nth-child(2) #chartDonut {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
         }
 
         .main-chart-card::before {
@@ -405,6 +496,7 @@
             flex: 5; /* Increased from 4 to fill space */
             min-height: 0; 
             min-width: 0;
+            margin-top: 10px; /* Jarak tambahan dari baris chart di atasnya */
         }
 
         /* --- Tables Styling --- */
@@ -548,10 +640,23 @@
             pointer-events: none;
         }
 
-        /* Fixed height for table scrolling */
+        /* Fixed height for table scrolling - responsive */
         .table-card .table-content {
             height: 300px; /* Constrain height to trigger scroll */
             overflow-y: auto;
+            min-height: 200px;
+        }
+        
+        @@media (min-width: 1920px) {
+            .table-card .table-content {
+                height: 350px;
+            }
+        }
+        
+        @@media (max-width: 1366px) {
+            .table-card .table-content {
+                height: 250px;
+            }
         }
 
         /* Loader */
@@ -1052,7 +1157,67 @@
         onPlantChange(); // Initialize filter options and data
         
         // Auto refresh every 5 minutes for TV display
-        setInterval(loadData, 300000); 
+        setInterval(loadData, 300000);
+        
+        // Handle window resize for chart responsiveness
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                // Trigger chart resize
+                if (window.charts) {
+                    Object.keys(window.charts).forEach(function(selector) {
+                        if (window.charts[selector] && typeof window.charts[selector].resize === 'function') {
+                            try {
+                                window.charts[selector].resize();
+                            } catch(e) {
+                                console.warn('Chart resize error:', e);
+                            }
+                        }
+                    });
+                }
+                // Also trigger ApexCharts global resize
+                if (window.ApexCharts) {
+                    window.dispatchEvent(new Event('resize'));
+                }
+            }, 250);
+        });
+        
+        // Re-render donut chart on resize to update responsive options
+        let donutResizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(donutResizeTimeout);
+            donutResizeTimeout = setTimeout(function() {
+                // If donut chart exists and data is loaded, update it
+                if (window.currentData && window.charts && window.charts['#chartDonut']) {
+                    const isSmallScreen = window.innerWidth <= 1366;
+                    const isMediumScreen = window.innerWidth > 1366 && window.innerWidth < 1920;
+                    
+                    // Update legend position dynamically
+                    try {
+                        const chart = window.charts['#chartDonut'];
+                        if (chart && chart.updateOptions) {
+                            chart.updateOptions({
+                                legend: {
+                                    position: isSmallScreen ? 'bottom' : 'right',
+                                    horizontalAlign: isSmallScreen ? 'center' : 'right',
+                                    fontSize: isSmallScreen ? '9px' : (isMediumScreen ? '10px' : '11px')
+                                },
+                                plotOptions: {
+                                    pie: {
+                                        donut: {
+                                            size: isSmallScreen ? '75%' : (isMediumScreen ? '70%' : '70%')
+                                        }
+                                    }
+                                }
+                            }, false, false);
+                        }
+                    } catch(e) {
+                        console.warn('Donut chart update error:', e);
+                    }
+                }
+            }, 300);
+        });
     });
 
     function onPlantChange() {
@@ -1252,7 +1417,9 @@
                     speed: 350
                 }
             },
-            redrawOnParentResize: true
+            redrawOnParentResize: true,
+            width: '100%',
+            height: '100%'
         },
         theme: { mode: 'dark' },
         grid: { 
@@ -1326,6 +1493,7 @@
                 chart: {
                     type: 'line',
                     height: '100%',
+                    width: '100%',
                     stacked: true,
                     toolbar: { show: false },
                     events: {
@@ -1407,6 +1575,7 @@
             chart: { 
                 type: 'bar', 
                 height: '100%',
+                width: '100%',
                 events: {
                     dataPointSelection: (event, chartContext, config) => {
                         console.log('[Pareto] dataPointSelection:', config);
@@ -1419,37 +1588,46 @@
             },
             xaxis: { 
                 categories: d.chartParetoPart.map(x => x.kodeItem),
-                labels: { rotate: -45 }
+                labels: { 
+                    rotate: -45,
+                    rotateAlways: true,
+                    style: { fontSize: '9px' },
+                    hideOverlappingLabels: true
+                }
             },
             plotOptions: { 
                 bar: { 
-                    borderRadius: 2, 
-                    columnWidth: '50%',
+                    borderRadius: 4, 
+                    columnWidth: '60%',
                     distributed: true,
                     dataLabels: { position: 'top' }
                 } 
             },
-            colors: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af'],
+            colors: ['#3b82f6', '#2563eb', '#1d4ed8', '#1e40af', '#1e3a8a', '#172554', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'],
             dataLabels: { 
                 enabled: true, 
                 offsetY: -20,
-                style: { fontSize: '10px', fontWeight: 700, colors: ['#fff'] },
+                style: { fontSize: '9px', fontWeight: 600, colors: ['#fff'] },
                 formatter: (val) => val.toLocaleString()
             },
             tooltip: {
                 theme: 'dark',
                 y: { formatter: (val) => val.toLocaleString() + ' pcs' }
             },
-            grid: { padding: { bottom: 25 } }
+            grid: { padding: { bottom: 40, left: 10, right: 10 } }
         });
 
-        // Donut
+        // Donut - Responsive configuration
+        const isSmallScreen = window.innerWidth <= 1366;
+        const isMediumScreen = window.innerWidth > 1366 && window.innerWidth < 1920;
+        
         createChart("#chartDonut", {
             series: d.chartNgCriteria.map(x => x.totalNg),
             labels: d.chartNgCriteria.map(x => x.kriteriaNg),
             chart: { 
                 type: 'donut', 
                 height: '100%',
+                width: '100%',
                 events: {
                     dataPointSelection: (event, chartContext, config) => {
                         console.log('[Donut] dataPointSelection:', config);
@@ -1463,20 +1641,47 @@
             legend: { 
                 show: true,
                 position: 'right', 
-                fontSize: '11px', 
+                fontSize: isSmallScreen ? '8px' : (isMediumScreen ? '10px' : '11px'),
                 labels: { colors: '#94a3b8' },
-                itemMargin: { vertical: 2 }
+                itemMargin: { 
+                    vertical: isSmallScreen ? 1 : 2,
+                    horizontal: 5
+                },
+                formatter: function(seriesName, opts) {
+                    if (seriesName.length > 15) return seriesName.substring(0, 15) + '..';
+                    return seriesName;
+                },
+                width: isSmallScreen ? 100 : 150, 
+                maxHeight: isSmallScreen ? 120 : 150, // Limit to approx 7 rows
+                offsetX: isSmallScreen ? -30 : -50, 
+                offsetY: 0
             },
             plotOptions: {
                 pie: {
                     donut: {
-                        size: '70%',
+                        // PERBESAR donut di layar kecil agar lebih terlihat
+                        size: isSmallScreen ? '80%' : (isMediumScreen ? '75%' : '72%'),
                         labels: {
                             show: true,
-                            name: { show: true, fontSize: '12px', color: '#94a3b8', offsetY: -5 },
-                            value: { show: true, fontSize: '18px', color: '#fff', fontWeight: 700, offsetY: 5, formatter: (v) => v.toLocaleString() },
+                            name: { 
+                                show: true, 
+                                fontSize: isSmallScreen ? '11px' : (isMediumScreen ? '12px' : '12px'), 
+                                color: '#94a3b8', 
+                                offsetY: isSmallScreen ? -3 : -5 
+                            },
+                            value: { 
+                                show: true, 
+                                fontSize: isSmallScreen ? '16px' : (isMediumScreen ? '18px' : '18px'), 
+                                color: '#fff', 
+                                fontWeight: 700, 
+                                offsetY: isSmallScreen ? 3 : 5, 
+                                formatter: (v) => v.toLocaleString() 
+                            },
                             total: { 
-                                show: true, label: 'TOTAL NG', fontSize: '10px', color: '#94a3b8',
+                                show: true, 
+                                label: 'TOTAL NG', 
+                                fontSize: isSmallScreen ? '9px' : (isMediumScreen ? '10px' : '10px'), 
+                                color: '#94a3b8',
                                 formatter: () => d.chartNgCriteria.reduce((a, b) => a + b.totalNg, 0).toLocaleString()
                             }
                         }
@@ -1488,17 +1693,73 @@
             tooltip: {
                 theme: 'dark',
                 y: { formatter: (val) => val.toLocaleString() + ' pcs' }
-            }
+            },
+            grid: {
+                padding: { right: -15, left: -10 }
+            },
+            responsive: [{
+                breakpoint: 1366,
+                options: {
+                    chart: {
+                        height: '100%'
+                    },
+                    legend: {
+                        position: 'right',
+                        fontSize: '8px',
+                        itemMargin: {
+                            vertical: 1,
+                            horizontal: 5
+                        },
+                        width: 100,
+                        maxHeight: 120,
+                        offsetX: -30
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                // PERBESAR untuk layar kecil
+                                size: '75%',
+                                labels: {
+                                    name: { fontSize: '11px', offsetY: -3 },
+                                    value: { fontSize: '16px', offsetY: 3 },
+                                    total: { fontSize: '9px' }
+                                }
+                            }
+                        }
+                    }
+                }
+            }, {
+                breakpoint: 1920,
+                options: {
+                    legend: {
+                        fontSize: '10px'
+                    },
+                    plotOptions: {
+                        pie: {
+                            donut: {
+                                size: '70%',
+                                labels: {
+                                    name: { fontSize: '12px' },
+                                    value: { fontSize: '18px' },
+                                    total: { fontSize: '10px' }
+                                }
+                            }
+                        }
+                    }
+                }
+            }]
         });
     }
 
     let currentData = null;
+    window.currentData = null; // Expose globally for resize handler
     let pagePart = 1;
     let pageNg = 1;
     const pageSize = 50;
 
     function renderTables(d) {
         currentData = d;
+        window.currentData = d; // Store globally
         renderPartTable();
         renderNgTable();
     }
@@ -1567,11 +1828,29 @@
 
     // Helper to destroy old chart instance if exists
     let charts = {};
+    window.charts = charts; // Expose globally for resize handler
+    
     function createChart(selector, options) {
-        if (charts[selector]) charts[selector].destroy();
+        const chartElement = document.querySelector(selector);
+        if (!chartElement) {
+            console.warn('Chart element not found:', selector);
+            return;
+        }
+        
+        if (charts[selector]) {
+            try {
+                charts[selector].destroy();
+            } catch(e) {
+                console.warn('Error destroying chart:', e);
+            }
+        }
         
         // Deep merge logic simplified to handle only needed objects
         const mergedOptions = { ...commonOpts, ...options };
+        
+        // Ensure chart uses container dimensions
+        if (!mergedOptions.chart.width) mergedOptions.chart.width = '100%';
+        if (!mergedOptions.chart.height) mergedOptions.chart.height = '100%';
         
         // Deep merge for chart context
         if (commonOpts.chart && options.chart) {
@@ -1597,8 +1876,12 @@
             }
         }
         
-        charts[selector] = new ApexCharts(document.querySelector(selector), mergedOptions);
-        charts[selector].render();
+        try {
+            charts[selector] = new ApexCharts(chartElement, mergedOptions);
+            charts[selector].render();
+        } catch(e) {
+            console.error('Error creating chart:', e, selector);
+        }
     }
 
     function animateValue(id, end) {
@@ -1623,6 +1906,18 @@
     // Harmless Hack: Force chart resize on fullscreen change
     document.addEventListener('fullscreenchange', () => {
         setTimeout(() => {
+            // Trigger all charts to resize
+            if (window.charts) {
+                Object.keys(window.charts).forEach(function(selector) {
+                    if (window.charts[selector] && typeof window.charts[selector].resize === 'function') {
+                        try {
+                            window.charts[selector].resize();
+                        } catch(e) {
+                            console.warn('Chart resize error:', e);
+                        }
+                    }
+                });
+            }
             window.dispatchEvent(new Event('resize'));
         }, 300); // Tunggu transisi layar selesai
     });
